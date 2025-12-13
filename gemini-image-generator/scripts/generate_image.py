@@ -182,19 +182,24 @@ def generate_image(
             types.Part.from_bytes(data=img_data, mime_type=mime_type)
         )
 
-    # Add text prompt
-    contents.append(prompt)
+    # Build enhanced prompt with aspect ratio and size guidance
+    enhanced_prompt = prompt
 
-    # Configure generation with image settings
-    image_config_params = {"aspect_ratio": aspect_ratio}
+    # Add aspect ratio instruction
+    if aspect_ratio != "1:1":
+        enhanced_prompt = f"{prompt} (generate with {aspect_ratio} aspect ratio)"
 
-    # Only add size for Pro model (Flash model doesn't support it)
+    # Add size instruction for Pro model
     if model == "gemini-3-pro-image-preview" and size != "1K":
-        image_config_params["image_size"] = size
+        resolution_map = {"2K": "2048", "4K": "4096"}
+        enhanced_prompt = f"{enhanced_prompt} (high resolution: {resolution_map.get(size, '1024')}px)"
 
+    # Add text prompt
+    contents.append(enhanced_prompt)
+
+    # Configure generation for image output
     config = types.GenerateContentConfig(
         response_modalities=["IMAGE", "TEXT"],
-        image_config=types.ImageConfig(**image_config_params),
     )
 
     if verbose:
