@@ -6,6 +6,7 @@ A collection of skills for [Claude Code](https://docs.anthropic.com/en/docs/clau
 
 | Skill | Description |
 |-------|-------------|
+| [gemini-image-generator](./gemini-image-generator) | Generate images using Google's Gemini API for text-to-image, editing, and multi-image reference |
 | [ios-app-tester](./ios-app-tester) | Test iOS apps using AXe CLI for accessibility auditing, UI automation, and simulator control |
 
 ## Installation
