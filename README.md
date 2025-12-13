@@ -6,6 +6,7 @@ A collection of skills for [Claude Code](https://docs.anthropic.com/en/docs/clau
 
 | Skill | Description |
 |-------|-------------|
+| [codex-advisor](./codex-advisor) | Get second opinions from OpenAI Codex CLI for plan reviews, code reviews, and hard problems |
 | [ios-app-tester](./ios-app-tester) | Test iOS apps using AXe CLI for accessibility auditing, UI automation, and simulator control |
 
 ## Installation
