@@ -36,6 +36,12 @@ Here are some skills I've found useful for various projects I've been building. 
 |-------|-------------|-------------------|
 | [opensea-api](./opensea-api) | Interact with [OpenSea's](https://opensea.io) NFT marketplace API for metadata, listings, and events | Fetching NFT metadata and ownership info; getting collection stats and floor prices; tracking sales and transfers; building NFT dashboards; real-time monitoring with Stream API |
 
+### Meta & Skill Management
+
+| Skill | Description | Example Use Cases |
+|-------|-------------|-------------------|
+| [skill-finder](./skill-finder) | Proactively discover, install, and create skills from the [claude-plugins.dev](https://claude-plugins.dev) registry | Matrix-style "I want to know kung-fu" requests; auto-discovering skills when specialized domains are encountered; creating custom skills when no match exists; expanding Claude's capabilities on-demand |
+
 ## Installation
 
 Copy the skill folder to the appropriate location:
