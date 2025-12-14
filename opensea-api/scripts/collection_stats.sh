@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Get collection statistics from OpenSea API
 # Usage: ./collection_stats.sh <collection_slug>
 # Example: ./collection_stats.sh boredapeyachtclub
@@ -24,12 +24,19 @@ if [ -z "$OPENSEA_API_KEY" ]; then
     exit 1
 fi
 
+# Check for jq
+if ! command -v jq &>/dev/null; then
+    echo "Error: jq is required but not installed"
+    echo "Install with: brew install jq (macOS) or apt install jq (Linux)"
+    exit 1
+fi
+
 # Make API request with retry logic
 max_retries=4
 retry_count=0
 base_delay=2
 
-while [ $retry_count -lt $max_retries ]; do
+while [ "$retry_count" -lt "$max_retries" ]; do
     response=$(curl -s -w "\n%{http_code}" \
         "https://api.opensea.io/api/v2/collections/${COLLECTION}/stats" \
         -H "X-API-KEY: $OPENSEA_API_KEY" \
@@ -57,9 +64,9 @@ while [ $retry_count -lt $max_retries ]; do
         ' 2>/dev/null || echo "$body" | jq '.'
         exit 0
     elif [ "$http_code" = "429" ]; then
-        delay=$((base_delay ** retry_count))
+        delay=$((base_delay ** (retry_count + 1)))
         echo "Rate limited. Retrying in ${delay}s..." >&2
-        sleep $delay
+        sleep "$delay"
         retry_count=$((retry_count + 1))
     elif [ "$http_code" = "404" ]; then
         echo "Error: Collection '$COLLECTION' not found" >&2

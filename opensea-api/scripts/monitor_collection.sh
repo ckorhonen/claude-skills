@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Monitor collection activity (listings and sales) from OpenSea API
 # Usage: ./monitor_collection.sh <collection_slug> [event_type] [interval_seconds]
 # Example: ./monitor_collection.sh boredapeyachtclub sale 30
@@ -23,6 +23,13 @@ INTERVAL="${3:-30}"
 if [ -z "$OPENSEA_API_KEY" ]; then
     echo "Error: OPENSEA_API_KEY environment variable is not set"
     echo "Get your API key at: https://docs.opensea.io/reference/api-keys"
+    exit 1
+fi
+
+# Check for jq
+if ! command -v jq &>/dev/null; then
+    echo "Error: jq is required but not installed"
+    echo "Install with: brew install jq (macOS) or apt install jq (Linux)"
     exit 1
 fi
 

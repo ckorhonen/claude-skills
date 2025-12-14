@@ -22,7 +22,8 @@ Interact with OpenSea's NFT marketplace through their REST API and real-time Str
 ## Prerequisites
 
 - OpenSea API key (free tier available)
-- `curl` or any HTTP client
+- `curl` for HTTP requests
+- `jq` for JSON parsing (`brew install jq` on macOS, `apt install jq` on Linux)
 - For Stream API: Node.js with `@opensea/stream-js` or Python with `opensea-stream`
 
 ## Getting an API Key
@@ -559,12 +560,12 @@ curl -s "https://api.opensea.io/api/v2/traits/boredapeyachtclub" \
 ### Retry with Exponential Backoff
 
 ```bash
-#!/bin/bash
+#!/usr/bin/env bash
 max_retries=4
 retry_count=0
 base_delay=2
 
-while [ $retry_count -lt $max_retries ]; do
+while [ "$retry_count" -lt "$max_retries" ]; do
   response=$(curl -s -w "%{http_code}" -o /tmp/response.json \
     "https://api.opensea.io/api/v2/collections/boredapeyachtclub" \
     -H "X-API-KEY: $OPENSEA_API_KEY")
@@ -573,9 +574,9 @@ while [ $retry_count -lt $max_retries ]; do
     cat /tmp/response.json
     exit 0
   elif [ "$response" = "429" ]; then
-    delay=$((base_delay ** retry_count))
+    delay=$((base_delay ** (retry_count + 1)))
     echo "Rate limited. Retrying in ${delay}s..." >&2
-    sleep $delay
+    sleep "$delay"
     retry_count=$((retry_count + 1))
   else
     echo "Error: HTTP $response" >&2

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Get NFTs owned by a wallet address from OpenSea API
 # Usage: ./wallet_nfts.sh <chain> <wallet_address> [limit]
 # Example: ./wallet_nfts.sh ethereum 0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045 50
@@ -25,6 +25,13 @@ if [ -z "$OPENSEA_API_KEY" ]; then
     exit 1
 fi
 
+# Check for jq
+if ! command -v jq &>/dev/null; then
+    echo "Error: jq is required but not installed"
+    echo "Install with: brew install jq (macOS) or apt install jq (Linux)"
+    exit 1
+fi
+
 # Validate chain
 VALID_CHAINS="ethereum matic arbitrum optimism base avalanche blast zora solana"
 if ! echo "$VALID_CHAINS" | grep -qw "$CHAIN"; then
@@ -38,7 +45,7 @@ max_retries=4
 retry_count=0
 base_delay=2
 
-while [ $retry_count -lt $max_retries ]; do
+while [ "$retry_count" -lt "$max_retries" ]; do
     response=$(curl -s -w "\n%{http_code}" \
         "https://api.opensea.io/api/v2/chain/${CHAIN}/account/${ADDRESS}/nfts?limit=${LIMIT}" \
         -H "X-API-KEY: $OPENSEA_API_KEY" \
@@ -55,9 +62,9 @@ while [ $retry_count -lt $max_retries ]; do
         echo "$body" | jq '.'
         exit 0
     elif [ "$http_code" = "429" ]; then
-        delay=$((base_delay ** retry_count))
+        delay=$((base_delay ** (retry_count + 1)))
         echo "Rate limited. Retrying in ${delay}s..." >&2
-        sleep $delay
+        sleep "$delay"
         retry_count=$((retry_count + 1))
     else
         echo "Error: HTTP $http_code" >&2
