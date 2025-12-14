@@ -1,6 +1,6 @@
 ---
 name: gemini-visual
-description: Visual and front-end development assistant powered by Google Gemini 3. Use for UI analysis, design comparison, accessibility audits, color palette extraction, screenshot-to-code conversion, and generating UI assets.
+description: Visual and front-end development assistant powered by Google Gemini 3. Use for UI analysis, design comparison, accessibility audits, color palette extraction, screenshot-to-code conversion, generating UI assets, and text-based design assistance from briefs.
 ---
 
 # Gemini Visual - Front-End & Visual Development Assistant
@@ -19,6 +19,8 @@ A comprehensive toolkit leveraging Google Gemini 3's advanced visual reasoning c
 - **UI Asset Generation**: Create icons, backgrounds, gradients, and UI graphics
 - **Responsive Design Review**: Analyze multi-device screenshots for consistency
 - **Visual Debugging**: Identify rendering issues, broken layouts, or visual bugs
+- **Design from Brief**: Generate designs, code, and components from text descriptions
+- **Interactive Design Sessions**: Multi-turn conversations for iterative design refinement
 
 ## Prerequisites
 
@@ -58,6 +60,7 @@ echo 'export GEMINI_API_KEY="your-api-key"' >> ~/.zshrc
 | `compare_designs.py` | Compare two designs and highlight differences |
 | `extract_colors.py` | Extract color palettes from images |
 | `screenshot_to_code.py` | Convert screenshots to HTML/CSS code |
+| `design_from_brief.py` | Generate designs and code from text briefs (no image required) |
 
 ## Available Models
 
@@ -299,6 +302,88 @@ python scripts/screenshot_to_code.py -f tailwind -c --responsive -o ./components
 
 ---
 
+### 6. design_from_brief.py - Text-Based Design Assistant
+
+Generate frontend designs, code, and components from text descriptions without needing visual input.
+
+```
+python scripts/design_from_brief.py [options]
+
+Input (one required):
+  -p, --prompt TEXT      Design brief or prompt text
+  -b, --brief-file FILE  Read brief from a file
+  --interactive          Start interactive design session
+
+Options:
+  -m, --mode MODE        Generation mode (default: code)
+                         Modes: design, code, component, review, brainstorm
+  -fw, --framework FW    Framework for code generation (default: tailwind)
+                         Frameworks: tailwind, css, bootstrap, react, vue, svelte, vanilla
+  -c, --context TEXT     Additional context (existing code, constraints)
+  -f, --format FORMAT    Output format: text, json, markdown (default: text)
+  -o, --output FILE      Save output to file
+  -v, --verbose          Show detailed progress
+```
+
+**Examples:**
+
+```bash
+# Generate code from a brief
+python scripts/design_from_brief.py -p "Create a pricing table with 3 tiers" -m code -fw tailwind
+
+# Get design advice and guidance
+python scripts/design_from_brief.py -p "Design a modern SaaS landing page" -m design
+
+# Generate a React component
+python scripts/design_from_brief.py -p "A toggle switch with smooth animation" -m component -fw react
+
+# Review a design idea
+python scripts/design_from_brief.py -p "Is a hamburger menu good for desktop navigation?" -m review
+
+# Brainstorm creative ideas
+python scripts/design_from_brief.py -p "Ideas for a fitness app dashboard" -m brainstorm
+
+# Read brief from file
+python scripts/design_from_brief.py -b project_brief.txt -m code -fw vue
+
+# Interactive multi-turn session
+python scripts/design_from_brief.py --interactive -m code -fw tailwind
+```
+
+**Generation Modes:**
+
+- **design**: Get design guidance including colors, typography, layout, and UX recommendations
+- **code**: Generate complete, production-ready frontend code
+- **component**: Design and code reusable UI components with props and variants
+- **review**: Get feedback and recommendations on design ideas or code
+- **brainstorm**: Generate creative ideas and multiple design directions
+
+**Supported Frameworks:**
+
+| Framework | Description |
+|-----------|-------------|
+| `tailwind` | Tailwind CSS utility classes |
+| `css` | Custom CSS with variables and BEM |
+| `bootstrap` | Bootstrap 5 components |
+| `react` | React functional components with TypeScript |
+| `vue` | Vue 3 Composition API with TypeScript |
+| `svelte` | Svelte components |
+| `vanilla` | Plain HTML/CSS/JavaScript |
+
+**Interactive Session Commands:**
+
+When using `--interactive`, you can use these commands:
+
+| Command | Description |
+|---------|-------------|
+| `/mode <mode>` | Change generation mode |
+| `/framework <fw>` | Change framework |
+| `/save <file>` | Save last response to file |
+| `/clear` | Clear conversation history |
+| `/quit` | Exit session |
+
+---
+
 ## Use Cases
 
 ### Front-End Development Workflow
@@ -338,6 +423,47 @@ done
 # Generate backgrounds for different screens
 python scripts/generate_ui_assets.py -p "Auth screen gradient" -t background -a 9:16 -o bg_auth.png
 python scripts/generate_ui_assets.py -p "Dashboard header" -t background -a 21:9 -o bg_header.png
+```
+
+### Design from Text Brief
+
+```bash
+# Start with design exploration
+python scripts/design_from_brief.py -p "E-commerce product page for sneakers" -m design -o design_spec.md
+
+# Generate the code
+python scripts/design_from_brief.py -p "E-commerce product page with image gallery,
+size selector, add to cart button, and reviews section" -m code -fw react -o product_page.tsx
+
+# Create reusable components
+python scripts/design_from_brief.py -p "Star rating component, 1-5 stars,
+supports half stars, shows count" -m component -fw react
+
+# Interactive refinement session
+python scripts/design_from_brief.py --interactive -m code -fw tailwind
+# Then iterate: "Add a sticky header", "Make the CTA more prominent", etc.
+```
+
+### Full Project Workflow (No Images Needed)
+
+```bash
+# 1. Brainstorm ideas
+python scripts/design_from_brief.py -p "Modern dashboard for analytics SaaS" -m brainstorm
+
+# 2. Get detailed design spec
+python scripts/design_from_brief.py -p "Analytics dashboard with sidebar nav,
+KPI cards, charts, and data tables" -m design -f markdown -o design.md
+
+# 3. Generate components
+python scripts/design_from_brief.py -p "KPI card showing metric, trend, and sparkline" \
+  -m component -fw react -o components/KPICard.tsx
+
+python scripts/design_from_brief.py -p "Data table with sorting, filtering, pagination" \
+  -m component -fw react -o components/DataTable.tsx
+
+# 4. Generate full page layout
+python scripts/design_from_brief.py -p "Dashboard layout combining sidebar, header,
+and main content area with the KPI cards and data table" -m code -fw react
 ```
 
 ---
