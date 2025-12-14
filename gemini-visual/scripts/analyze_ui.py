@@ -11,7 +11,6 @@ import json
 import os
 import sys
 from pathlib import Path
-from typing import Optional
 
 # Exit codes
 EXIT_SUCCESS = 0
@@ -29,10 +28,10 @@ VALID_FORMATS = ["text", "json", "markdown"]
 VALID_THINKING = ["low", "high"]
 
 RESOLUTION_MAP = {
-    "low": "media_resolution_low",
-    "medium": "media_resolution_medium",
-    "high": "media_resolution_high",
-    "ultra_high": "media_resolution_ultra_high",
+    "low": "MEDIA_RESOLUTION_LOW",
+    "medium": "MEDIA_RESOLUTION_MEDIUM",
+    "high": "MEDIA_RESOLUTION_HIGH",
+    "ultra_high": "MEDIA_RESOLUTION_HIGH",  # ultra_high maps to high (highest available)
 }
 
 # Analysis prompts for each mode
@@ -284,9 +283,10 @@ def analyze_ui(
         full_prompt,
     ]
 
-    # Configure generation
+    # Configure generation with media resolution
     config = types.GenerateContentConfig(
         temperature=1.0,  # Recommended default for Gemini 3
+        media_resolution=getattr(types.MediaResolution, RESOLUTION_MAP[resolution]),
     )
 
     if verbose:

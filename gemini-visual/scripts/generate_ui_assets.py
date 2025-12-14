@@ -186,14 +186,14 @@ def generate_asset(
     # Build and add prompt
     full_prompt = build_prompt(prompt, asset_type, style, colors)
 
-    # Add aspect ratio instruction
+    # Add aspect ratio instruction to prompt
     if aspect_ratio != "1:1":
-        full_prompt = f"{full_prompt} (generate with {aspect_ratio} aspect ratio)"
+        full_prompt = f"{full_prompt} Generate with {aspect_ratio} aspect ratio."
 
-    # Add size instruction
+    # Add size/resolution instruction to prompt
     if size != "1K":
-        resolution_map = {"2K": "2048", "4K": "4096"}
-        full_prompt = f"{full_prompt} (high resolution: {resolution_map.get(size, '1024')}px)"
+        resolution_map = {"2K": "2048x2048", "4K": "4096x4096"}
+        full_prompt = f"{full_prompt} Generate at high resolution ({resolution_map.get(size, '1024x1024')})."
 
     contents.append(full_prompt)
 
@@ -227,7 +227,17 @@ def generate_asset(
         sys.exit(EXIT_API_ERROR)
 
     candidate = response.candidates[0]
-    if not hasattr(candidate, "content") or not hasattr(candidate.content, "parts"):
+    if not hasattr(candidate, "content") or candidate.content is None:
+        print("Error: No image content returned. The request may have been blocked by content moderation.", file=sys.stderr)
+        # Try to get any text response that might explain the issue
+        try:
+            if hasattr(response, 'text') and response.text:
+                print(f"Model response: {response.text}", file=sys.stderr)
+        except Exception:
+            pass
+        sys.exit(EXIT_API_ERROR)
+
+    if not hasattr(candidate.content, "parts") or candidate.content.parts is None:
         print("Error: Unexpected response structure from API.", file=sys.stderr)
         sys.exit(EXIT_API_ERROR)
 

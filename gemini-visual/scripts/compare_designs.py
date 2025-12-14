@@ -26,6 +26,13 @@ VALID_MODES = ["full", "visual", "content", "accessibility"]
 VALID_RESOLUTIONS = ["low", "medium", "high", "ultra_high"]
 VALID_FORMATS = ["text", "json", "markdown"]
 
+RESOLUTION_MAP = {
+    "low": "MEDIA_RESOLUTION_LOW",
+    "medium": "MEDIA_RESOLUTION_MEDIUM",
+    "high": "MEDIA_RESOLUTION_HIGH",
+    "ultra_high": "MEDIA_RESOLUTION_HIGH",  # ultra_high maps to high (highest available)
+}
+
 # Comparison prompts
 COMPARISON_PROMPTS = {
     "full": """Compare these two UI designs comprehensively. The first image is the "before" or "version A", and the second is the "after" or "version B".
@@ -281,9 +288,10 @@ def compare_designs(
         full_prompt,
     ]
 
-    # Configure generation
+    # Configure generation with media resolution
     config = types.GenerateContentConfig(
         temperature=1.0,
+        media_resolution=getattr(types.MediaResolution, RESOLUTION_MAP[resolution]),
     )
 
     if verbose:

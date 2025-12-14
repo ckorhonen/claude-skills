@@ -28,6 +28,13 @@ VALID_FRAMEWORKS = ["tailwind", "css", "bootstrap", "vanilla"]
 VALID_RESOLUTIONS = ["low", "medium", "high", "ultra_high"]
 VALID_THINKING = ["low", "high"]
 
+RESOLUTION_MAP = {
+    "low": "MEDIA_RESOLUTION_LOW",
+    "medium": "MEDIA_RESOLUTION_MEDIUM",
+    "high": "MEDIA_RESOLUTION_HIGH",
+    "ultra_high": "MEDIA_RESOLUTION_HIGH",  # ultra_high maps to high (highest available)
+}
+
 # Framework-specific prompts
 FRAMEWORK_PROMPTS = {
     "tailwind": """Convert this UI screenshot to HTML with Tailwind CSS classes.
@@ -261,9 +268,10 @@ def convert_screenshot(
         prompt,
     ]
 
-    # Configure generation
+    # Configure generation with media resolution
     config = types.GenerateContentConfig(
         temperature=0.7,  # Slightly creative for code generation
+        media_resolution=getattr(types.MediaResolution, RESOLUTION_MAP[resolution]),
     )
 
     if verbose:

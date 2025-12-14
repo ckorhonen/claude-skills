@@ -521,6 +521,24 @@ Use high thinking level and ultra_high resolution:
 python scripts/screenshot_to_code.py --thinking high -r ultra_high mockup.png
 ```
 
+### Asset generation blocked by content moderation
+
+If you see "No image content returned. The request may have been blocked by content moderation", try:
+- Simplifying or rephrasing your prompt
+- Removing specific brand names or copyrighted references
+- Using more generic descriptions
+
+This is a safety filter from the Gemini API and not all prompts will be accepted.
+
+### Resolution affects token usage
+
+The `--resolution` parameter controls how many tokens are used for image processing:
+- `low`: ~70 tokens/image - Quick scans, thumbnails
+- `medium`: ~560 tokens/image - Standard screenshots, OCR
+- `high`: ~1120 tokens/image - Detailed UI analysis (default)
+
+Higher resolution provides better accuracy but uses more tokens.
+
 ---
 
 ## Best Practices
