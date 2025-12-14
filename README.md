@@ -9,6 +9,7 @@ A collection of skills for [Claude Code](https://docs.anthropic.com/en/docs/clau
 | [codex-advisor](./codex-advisor) | Get second opinions from OpenAI Codex CLI for plan reviews, code reviews, and hard problems |
 | [gemini-image-generator](./gemini-image-generator) | Generate images using Google's Gemini API for text-to-image, editing, and multi-image reference |
 | [ios-app-tester](./ios-app-tester) | Test iOS apps using AXe CLI for accessibility auditing, UI automation, and simulator control |
+| [poplar-direct-mail](./poplar-direct-mail) | Design and send programmatic direct mail using Poplar's HTML templates and API |
 
 ## Installation
 

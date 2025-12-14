@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <!--
+    Poplar 4x6 Postcard - Back Template
+    Dimensions: 4.25" x 6.25" (includes 0.125" bleed)
+    Resolution: 1275 x 1875 pixels at 300 PPI
+
+    IMPORTANT: The address block is automatically added by Poplar.
+    Keep the right side (approx 2.625" wide) clear for the address area.
+
+    Replace:
+    - Logo URL
+    - QR code URL (use {{promotion.qr_url}} for dynamic QR)
+    - Brand colors
+    - Contact information
+  -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap"
+        rel="stylesheet" type="text/css">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      width: 4.25in;
+      height: 6.25in;
+      position: relative;
+      font-family: 'Inter', sans-serif;
+      background: #ffffff;
+    }
+
+    /* Content area - left side only (address goes on right) */
+    .content-area {
+      position: absolute;
+      top: 0.375in;
+      left: 0.375in;
+      width: 3.25in;  /* Leave room for address block */
+      bottom: 0.375in;
+    }
+
+    .logo {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 0.4in;
+    }
+
+    .message {
+      position: absolute;
+      top: 0.6in;
+      left: 0;
+      right: 0.25in;
+      font-size: 11pt;
+      color: #333333;
+      line-height: 1.6;
+    }
+
+    .promo-section {
+      position: absolute;
+      top: 1.8in;
+      left: 0;
+    }
+
+    .promo-box {
+      background: #f8f9fa;
+      border: 2px dashed #e94560;
+      padding: 0.15in 0.25in;
+      display: inline-block;
+    }
+
+    .promo-label {
+      font-size: 9pt;
+      color: #666666;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .promo-code {
+      font-size: 20pt;
+      font-weight: 700;
+      color: #e94560;
+      letter-spacing: 3px;
+    }
+
+    .expiry {
+      position: absolute;
+      top: 2.7in;
+      left: 0;
+      font-size: 9pt;
+      color: #999999;
+    }
+
+    .qr-section {
+      position: absolute;
+      bottom: 0.8in;
+      left: 0;
+    }
+
+    .qr-code {
+      width: 1in;
+      height: 1in;
+      border: 1px solid #eeeeee;
+    }
+
+    .qr-label {
+      font-size: 9pt;
+      color: #666666;
+      margin-top: 0.1in;
+    }
+
+    .footer {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+    }
+
+    .website {
+      font-size: 10pt;
+      font-weight: 600;
+      color: #1a1a2e;
+    }
+
+    .fine-print {
+      font-size: 7pt;
+      color: #999999;
+      margin-top: 0.05in;
+    }
+
+    /* Address block area - Poplar adds this automatically */
+    /* Keep this area clear for the address */
+    .address-placeholder {
+      position: absolute;
+      top: 0.375in;
+      right: 0.375in;
+      width: 2.625in;
+      height: 1.125in;
+      /* Address block will be placed here by Poplar */
+      /* Design your background to extend behind this area */
+    }
+
+    /* Decorative divider line */
+    .divider {
+      position: absolute;
+      top: 0.375in;
+      left: 3.5in;
+      width: 1px;
+      height: 5.5in;
+      background: #eeeeee;
+    }
+  </style>
+</head>
+<body>
+  <div class="divider"></div>
+
+  <div class="content-area">
+    <!-- Replace with your logo URL -->
+    <img src="https://your-domain.com/logo-dark.svg" class="logo" alt="Company Logo">
+
+    <div class="message">
+      Thanks for being a valued customer! Enjoy this
+      exclusive discount on your next purchase.
+      Shop online or visit us in store.
+    </div>
+
+    <div class="promo-section">
+      <div class="promo-box">
+        <div class="promo-label">Your Promo Code</div>
+        <div class="promo-code">{{promotion.promo_code | default: "SAVE25"}}</div>
+      </div>
+    </div>
+
+    <div class="expiry">
+      Offer expires: {{ "now" | date: "%s" | plus: 2592000 | date: "%B %e, %Y" }}
+    </div>
+
+    <div class="qr-section">
+      <!-- Use {{promotion.qr_url}} for dynamic QR codes -->
+      <img src="{{promotion.qr_url}}" class="qr-code" alt="Scan to shop">
+      <div class="qr-label">Scan to shop now</div>
+    </div>
+
+    <div class="footer">
+      <div class="website">yourcompany.com/save</div>
+      <div class="fine-print">
+        Cannot be combined with other offers. One use per customer.
+      </div>
+    </div>
+  </div>
+</body>
+</html>
