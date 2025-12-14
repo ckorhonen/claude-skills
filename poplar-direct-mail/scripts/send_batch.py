@@ -263,9 +263,12 @@ Examples:
         print(f"  Errors: {errors_count}")
 
         if errors and args.error_log:
-            with open(args.error_log, 'w') as f:
-                json.dump(errors, f, indent=2)
-            print(f"  Error log: {args.error_log}")
+            try:
+                with open(args.error_log, 'w') as f:
+                    json.dump(errors, f, indent=2)
+                print(f"  Error log: {args.error_log}")
+            except IOError as e:
+                print(f"  Warning: Could not write error log: {e}", file=sys.stderr)
 
         if errors_count > 0:
             sys.exit(1)

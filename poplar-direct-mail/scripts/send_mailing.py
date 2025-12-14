@@ -158,15 +158,15 @@ Examples:
             print(json.dumps(result, indent=2))
         else:
             print(f"Mailing created successfully!")
-            print(f"  ID: {result['id']}")
-            print(f"  Status: {result['state']}")
+            print(f"  ID: {result.get('id', 'N/A')}")
+            print(f"  Status: {result.get('state', 'unknown')}")
             print(f"  Cost: ${result.get('total_cost', 'N/A')}")
             if result.get('pdf_url'):
-                print(f"  PDF Preview: {result['pdf_url']}")
+                print(f"  PDF Preview: {result.get('pdf_url')}")
             if result.get('front_url'):
-                print(f"  Front Preview: {result['front_url']}")
+                print(f"  Front Preview: {result.get('front_url')}")
             if result.get('back_url'):
-                print(f"  Back Preview: {result['back_url']}")
+                print(f"  Back Preview: {result.get('back_url')}")
 
     except ValueError as e:
         print(f"Error: {e}", file=sys.stderr)

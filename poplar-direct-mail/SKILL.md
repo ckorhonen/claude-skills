@@ -663,6 +663,23 @@ if __name__ == "__main__":
 
 ### QR Codes
 
+QR code images must be pre-generated and provided as a URL in your merge tags. Poplar does not auto-generate QR codes.
+
+**Providing QR codes:**
+```python
+merge_tags = {
+    "promotion": {
+        "qr_url": "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://yoursite.com/offer123"
+    }
+}
+```
+
+Or use services like:
+- [QR Code Generator API](https://goqr.me/api/)
+- [QRCode Monkey](https://www.qrcode-monkey.com/)
+- Your own QR generation service
+
+**Design guidelines:**
 - **Minimum size**: 0.75" x 0.75" (larger for complex URLs)
 - **Quiet zone**: Leave white space around the code
 - **Test before printing**: Always verify QR codes work
