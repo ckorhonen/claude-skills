@@ -67,7 +67,7 @@ codex -m gpt-5.2 -c model_reasoning_effort="xhigh" "Review this implementation p
 For plans involving the current codebase:
 
 ```bash
-codex -m gpt-5.2 -c model_reasoning_effort="xhigh" --path . "Review this implementation plan in the context of this codebase. Identify potential issues, conflicts with existing patterns, or better approaches:
+codex -m gpt-5.2 -c model_reasoning_effort="xhigh" -C . "Review this implementation plan in the context of this codebase. Identify potential issues, conflicts with existing patterns, or better approaches:
 
 <paste plan here>"
 ```
@@ -78,13 +78,13 @@ Review code changes for bugs, security issues, and improvements:
 
 ```bash
 # Review specific file
-codex -m gpt-5.2 -c model_reasoning_effort="xhigh" --path . "Review this file for bugs, security vulnerabilities, performance issues, and suggest improvements. Focus on: <specific concerns>"
+codex -m gpt-5.2 -c model_reasoning_effort="xhigh" -C . "Review this file for bugs, security vulnerabilities, performance issues, and suggest improvements. Focus on: <specific concerns>"
 
 # Review a diff
-git diff | codex -m gpt-5.2 -c model_reasoning_effort="xhigh" "Review this diff for bugs, security issues, and improvements"
+git diff | codex exec -m gpt-5.2 -c model_reasoning_effort="xhigh" "Review this diff for bugs, security issues, and improvements"
 
 # Review staged changes
-git diff --staged | codex -m gpt-5.2 -c model_reasoning_effort="xhigh" "Review these changes before commit. Check for bugs, security issues, and adherence to best practices"
+git diff --staged | codex exec -m gpt-5.2 -c model_reasoning_effort="xhigh" "Review these changes before commit. Check for bugs, security issues, and adherence to best practices"
 ```
 
 ### Hard Problem Solving
@@ -92,7 +92,7 @@ git diff --staged | codex -m gpt-5.2 -c model_reasoning_effort="xhigh" "Review t
 When stuck on a difficult problem:
 
 ```bash
-codex -m gpt-5.2 -c model_reasoning_effort="xhigh" --path . "I'm stuck on this problem: <description>
+codex -m gpt-5.2 -c model_reasoning_effort="xhigh" -C . "I'm stuck on this problem: <description>
 
 What I've tried:
 1. <attempt 1>
@@ -108,7 +108,7 @@ Suggest solutions or debugging approaches."
 Get input on design trade-offs:
 
 ```bash
-codex -m gpt-5.2 -c model_reasoning_effort="xhigh" --path . "I need to decide between these approaches for <feature>:
+codex -m gpt-5.2 -c model_reasoning_effort="xhigh" -C . "I need to decide between these approaches for <feature>:
 
 Option A: <description>
 Option B: <description>
@@ -121,7 +121,7 @@ Given this codebase, which approach is better and why? Consider maintainability,
 When you want a fresh perspective:
 
 ```bash
-codex -m gpt-5.2 -c model_reasoning_effort="xhigh" --path . "Here's my current approach to <problem>: <description>
+codex -m gpt-5.2 -c model_reasoning_effort="xhigh" -C . "Here's my current approach to <problem>: <description>
 
 What are alternative ways to solve this? What am I missing?"
 ```
@@ -135,7 +135,7 @@ Before implementing a complex feature:
 ```bash
 # 1. Write your plan
 # 2. Get Codex review
-codex -m gpt-5.2 -c model_reasoning_effort="xhigh" --path . "Review this implementation plan for a user authentication system:
+codex -m gpt-5.2 -c model_reasoning_effort="xhigh" -C . "Review this implementation plan for a user authentication system:
 
 1. Add JWT middleware to Express routes
 2. Create /auth/login and /auth/register endpoints
@@ -151,7 +151,7 @@ Before committing complex changes:
 
 ```bash
 # Review staged changes
-git diff --staged | codex -m gpt-5.2 -c model_reasoning_effort="xhigh" "Review these changes for a PR. Check for:
+git diff --staged | codex exec -m gpt-5.2 -c model_reasoning_effort="xhigh" "Review these changes for a PR. Check for:
 - Bugs or logic errors
 - Security vulnerabilities
 - Performance issues
@@ -166,7 +166,7 @@ Provide specific line-by-line feedback."
 When stuck on a bug:
 
 ```bash
-codex -m gpt-5.2 -c model_reasoning_effort="xhigh" --path . "I have a race condition in my async queue processor.
+codex -m gpt-5.2 -c model_reasoning_effort="xhigh" -C . "I have a race condition in my async queue processor.
 
 Symptoms:
 - Jobs occasionally process twice
@@ -224,7 +224,7 @@ codex -m o3 -c model_reasoning_effort="high" "Architecture question..."
 
 1. **Provide context**: Include relevant file paths, error messages, and what you've tried
 2. **Be specific**: Ask focused questions rather than "review everything"
-3. **Use `--path .`**: Let Codex see your codebase for context-aware advice
+3. **Use `-C .`**: Let Codex see your codebase for context-aware advice
 4. **Iterate**: Ask follow-up questions to dig deeper
 5. **Verify suggestions**: Always validate Codex's recommendations against your codebase
 
@@ -260,3 +260,15 @@ export OPENAI_API_KEY="your-key"
 ### Rate limiting
 
 For heavy usage, use an API key with appropriate tier limits rather than ChatGPT authentication.
+
+### "stdin is not a terminal"
+
+When piping data to codex, use the `exec` subcommand for non-interactive mode:
+
+```bash
+# Wrong - interactive mode doesn't support piped input
+git diff | codex -m gpt-5.2 "Review this..."
+
+# Correct - use exec for non-interactive execution
+git diff | codex exec -m gpt-5.2 "Review this..."
+```
