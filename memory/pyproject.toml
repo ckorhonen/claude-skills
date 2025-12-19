@@ -1,0 +1,16 @@
+[project]
+name = "agent-memory"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "agno[pgvector,postgres]",
+    "psycopg[binary]",
+    "click",
+]
+
+[project.scripts]
+agent-memory = "agent_memory.cli:cli"
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_backend"
