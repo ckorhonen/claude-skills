@@ -43,3 +43,12 @@ $RECYCLE.BIN/
 *.msm
 *.msp
 *.lnk
+
+# Claude Code memory system
+.claude/learnings/pending.json
+.claude/learnings/tool_log.jsonl
+.claude/settings.local.json
+
+# Environment
+.env
+.env.local
