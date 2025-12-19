@@ -5,9 +5,29 @@ This hook blocks potentially dangerous bash commands that could harm the system.
 """
 
 import json
+import os
 import re
 import sys
 from typing import Any, Optional
+
+# Determine memory module location for audit logging
+# Priority: ~/.claude/memory (global install) > repo-local memory/
+script_dir = os.path.dirname(os.path.abspath(__file__))
+global_memory_dir = os.path.expanduser("~/.claude/memory")
+local_memory_dir = os.path.join(os.path.dirname(script_dir), "memory")
+
+if os.path.exists(global_memory_dir):
+    memory_dir = global_memory_dir
+else:
+    memory_dir = local_memory_dir
+
+sys.path.insert(0, memory_dir)
+
+# Import audit logging (fail-safe)
+try:
+    from agent_memory.audit_log import log_event
+except ImportError:
+    def log_event(*args, **kwargs): pass
 
 # Dangerous patterns to block (with explanations)
 DANGEROUS_PATTERNS = [
@@ -88,10 +108,13 @@ def main() -> int:
         decision, reason = check_command(command)
 
         if decision == "deny":
+            log_event("command_blocked", hook_name="pre_tool_use",
+                      data={"command": command[:100], "reason": reason})
             emit_output(permission_decision="deny", reason=reason)
         # Don't emit anything for allow - let it pass through
 
     except Exception as e:
+        log_event("hook_error", level="ERROR", hook_name="pre_tool_use", error=str(e))
         # Log to stderr but don't crash
         print(f"pre_tool_use error: {e}", file=sys.stderr)
 

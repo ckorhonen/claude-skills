@@ -9,30 +9,41 @@ import json
 import os
 import sys
 import subprocess
+import time
 
-# Determine if we're running from global hooks or local
-# Support both ~/.claude/hooks/ and repo-local hooks/
+# Determine memory module location
+# Priority: ~/.claude/memory (global install) > repo-local memory/
 script_dir = os.path.dirname(os.path.abspath(__file__))
-if script_dir.startswith(os.path.expanduser("~/.claude/hooks")):
-    # Running from global hooks - use the memory module from the skills repo
-    skills_root = os.environ.get("CLAUDE_SKILLS_ROOT",
-        os.path.expanduser("~/conductor/workspaces/claude-skills/beirut"))
-    memory_dir = os.path.join(skills_root, "memory")
+global_memory_dir = os.path.expanduser("~/.claude/memory")
+local_memory_dir = os.path.join(os.path.dirname(script_dir), "memory")
+
+if os.path.exists(global_memory_dir):
+    memory_dir = global_memory_dir
 else:
-    # Running from repo-local hooks
-    repo_root = os.path.dirname(script_dir)
-    memory_dir = os.path.join(repo_root, "memory")
+    memory_dir = local_memory_dir
 
 sys.path.insert(0, memory_dir)
 
+# Import audit logging (fail-safe)
+try:
+    from agent_memory.audit_log import log_event
+except ImportError:
+    def log_event(*args, **kwargs): pass
+
 
 def main():
+    start_time = time.perf_counter()
+    session_id = None
+    cwd = None
+
     try:
         # Read input from stdin
         input_data = json.load(sys.stdin)
         session_id = input_data.get("session_id")
         transcript_path = input_data.get("transcript_path")
         cwd = input_data.get("cwd", os.getcwd())
+
+        log_event("hook_invoked", hook_name="session_start", session_id=session_id, cwd=cwd)
 
         # Run ensure_db.sh script
         ensure_db_script = os.path.join(memory_dir, "scripts", "ensure_db.sh")
@@ -52,12 +63,18 @@ def main():
             # Initialize database
             db_available = hook_db.init_db()
 
+            log_event("db_init", hook_name="session_start", session_id=session_id,
+                      data={"available": db_available})
+
             if db_available:
                 # Get repository identifier for display
                 repo_identifier = hook_db.get_repo_identifier(cwd)
 
                 # Search for learnings across all applicable scopes (cascading)
                 learnings = hook_db.search_learnings_by_scope(cwd, limit=10)
+
+                log_event("learnings_retrieved", hook_name="session_start", session_id=session_id,
+                          data={"count": len(learnings), "repo": repo_identifier})
 
                 if learnings:
                     # Count learnings by scope for the header
@@ -135,6 +152,9 @@ def main():
 
     except Exception as e:
         # Always exit successfully to avoid breaking sessions
+        duration_ms = (time.perf_counter() - start_time) * 1000
+        log_event("hook_error", level="ERROR", hook_name="session_start",
+                  session_id=session_id, cwd=cwd, error=str(e), duration_ms=duration_ms)
         # Output minimal context on error
         output = {
             "hookSpecificOutput": {
@@ -143,6 +163,11 @@ def main():
             }
         }
         print(json.dumps(output))
+
+    # Log completion
+    duration_ms = (time.perf_counter() - start_time) * 1000
+    log_event("hook_completed", hook_name="session_start", session_id=session_id,
+              cwd=cwd, duration_ms=duration_ms)
 
     # Always exit 0 to avoid breaking sessions
     sys.exit(0)
