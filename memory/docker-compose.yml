@@ -1,6 +1,7 @@
 services:
   pgvector:
     image: agnohq/pgvector:16
+    restart: always
     environment:
       POSTGRES_DB: ai
       POSTGRES_USER: ai
