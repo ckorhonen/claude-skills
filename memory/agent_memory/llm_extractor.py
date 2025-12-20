@@ -110,7 +110,7 @@ def format_transcript(messages: List[Dict]) -> str:
     return '\n'.join(formatted_parts)
 
 
-def call_openai_extraction(transcript_text: str, api_key: str, model: str = "gpt-5.1-mini") -> List[Dict]:
+def call_openai_extraction(transcript_text: str, api_key: str, model: str = "gpt-5-mini") -> List[Dict]:
     """
     Call OpenAI API to extract learnings from transcript.
 
@@ -135,7 +135,7 @@ def call_openai_extraction(transcript_text: str, api_key: str, model: str = "gpt
             "messages": [
                 {"role": "user", "content": prompt}
             ],
-            "temperature": 0.3,  # Lower temperature for more consistent extraction
+            "temperature": 1,  # Required for GPT-5
             "max_tokens": 2000
         }).encode('utf-8')
 
@@ -300,7 +300,7 @@ def extract_learnings(
         return []
 
     # Get model from environment or use default
-    model = os.environ.get("EXTRACTION_MODEL", "gpt-5.1-mini")
+    model = os.environ.get("EXTRACTION_MODEL", "gpt-5-mini")
 
     # Truncate transcript if too long
     messages = truncate_transcript(transcript_messages, max_messages=50)
