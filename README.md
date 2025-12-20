@@ -64,6 +64,12 @@ Skills are located in the `skills/` directory.
 | [poplar-direct-mail](./skills/poplar-direct-mail) | Design and send programmatic direct mail using [Poplar's](https://heypoplar.com) HTML templates and API | Creating HTML templates for postcards and letters; building triggered/programmatic mail campaigns; integrating direct mail into marketing automation; sending personalized transactional mail |
 | [poke-assistant](./skills/poke-assistant) | Send messages and notifications to [Poke](https://poke.com) via webhook API | Notifying yourself when long-running tasks complete; sending error alerts that need attention; providing status updates on builds, tests, or deployments; sending reminders or daily summaries |
 
+### Graphics & 3D
+
+| Skill | Description | Example Use Cases |
+|-------|-------------|-------------------|
+| [gsplat-optimizer](./skills/gsplat-optimizer) | Optimize 3D Gaussian Splat scenes for real-time rendering on iOS, macOS, and visionOS using Metal | Analyzing `.ply`/`.splat` files for device targets; generating pruning plans (opacity/size thresholds); LOD scheme design (LODGE, FLoD); compression recommendations (SOGS, CodecGS); Metal profiling checklists |
+
 ### Web3 & Blockchain
 
 | Skill | Description | Example Use Cases |
@@ -120,6 +126,7 @@ beirut/
 │   ├── direct-mail-strategist/
 │   ├── gemini-image-generator/
 │   ├── gemini-visual/
+│   ├── gsplat-optimizer/
 │   ├── ios-app-tester/
 │   ├── opensea-api/
 │   ├── poke-assistant/
