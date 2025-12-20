@@ -4,12 +4,16 @@
 
 This project includes a self-learning memory subsystem that allows you to accumulate and retrieve learnings across sessions.
 
+### How It Works
+
+Learnings are **saved automatically** when you finish your response. When you propose a learning using `<proposed_learning>` tags, the Stop hook extracts it and saves it immediately via the memory daemon.
+
 ### Available Commands
 
-- `!save-learning [--global|--scope=X]` - Save the pending learning to the database
-- `!discard-learning` - Discard the pending learning
-- `!pending-learning` - Show the current pending learning
 - `!learnings [query] [--global|--scope=X]` - Search for learnings matching the query
+- `!save-learning [--global|--scope=X]` - Manually save a pending learning (fallback only)
+- `!discard-learning` - Discard a pending learning
+- `!pending-learning` - Show the current pending learning
 
 ### Scope Levels
 
@@ -29,7 +33,7 @@ When you discover a reusable insight worth remembering for future sessions, outp
 </proposed_learning>
 ```
 
-Then tell the user: "To save this learning, type: `!save-learning` (or `!discard-learning` to dismiss)."
+The learning will be saved automatically when your response completes. No user action required.
 
 ### Learning Schema
 

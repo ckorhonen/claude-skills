@@ -36,6 +36,54 @@ cp "$SKILLS_ROOT/memory/__init__.py" "$MEMORY_DIR/" 2>/dev/null || echo "" > "$M
 cp "$SKILLS_ROOT/memory/agent_memory/"*.py "$MEMORY_DIR/agent_memory/"
 cp "$SKILLS_ROOT/memory/scripts/ensure_db.sh" "$MEMORY_DIR/scripts/" 2>/dev/null || true
 
+# Copy daemon files
+echo "Copying daemon..."
+cp "$SKILLS_ROOT/memory/agent_memory/daemon.py" "$MEMORY_DIR/agent_memory/"
+cp "$SKILLS_ROOT/memory/agent_memory/daemon_client.py" "$MEMORY_DIR/agent_memory/"
+
+# Install launchd service
+PLIST_SRC="$SKILLS_ROOT/memory/launchd/com.claude.memory-daemon.plist"
+PLIST_DEST="$HOME/Library/LaunchAgents/com.claude.memory-daemon.plist"
+
+if [ -f "$PLIST_SRC" ]; then
+    echo "Installing daemon service..."
+    mkdir -p "$HOME/Library/LaunchAgents"
+
+    # Validate paths don't contain sed delimiter
+    if [[ "$MEMORY_DIR" == *"|"* ]] || [[ "$CLAUDE_DIR" == *"|"* ]]; then
+        echo "Error: Paths cannot contain '|' character" >&2
+        exit 1
+    fi
+
+    # Find Python with psycopg2 installed (prefer conda/venv over system)
+    PYTHON_PATH=""
+    for py in "$(which python3)" "/usr/bin/python3"; do
+        if [ -x "$py" ] && "$py" -c "import psycopg2" 2>/dev/null; then
+            PYTHON_PATH="$py"
+            break
+        fi
+    done
+
+    # Fallback to whichever python3 is available
+    if [ -z "$PYTHON_PATH" ]; then
+        PYTHON_PATH="$(which python3)"
+        echo "WARNING: psycopg2 not found in Python. Install with: pip install psycopg2-binary"
+    fi
+
+    echo "Using Python: $PYTHON_PATH"
+
+    # Generate plist with correct paths
+    sed -e "s|PYTHON_PATH|$PYTHON_PATH|g" \
+        -e "s|MEMORY_DIR|$MEMORY_DIR|g" \
+        -e "s|LOG_DIR|$CLAUDE_DIR/logs|g" \
+        "$PLIST_SRC" > "$PLIST_DEST"
+
+    # Start daemon
+    launchctl unload "$PLIST_DEST" 2>/dev/null || true
+    launchctl load "$PLIST_DEST"
+    echo "Daemon service installed and started"
+fi
+
 # Make scripts executable
 chmod +x "$HOOKS_DIR/"*.py
 chmod +x "$MEMORY_DIR/scripts/"*.sh 2>/dev/null || true
@@ -176,3 +224,8 @@ echo ""
 echo "To verify installation:"
 echo "  cat ~/.claude/logs/memory-audit.jsonl"
 echo "  !audit (in Claude Code)"
+echo ""
+echo "Daemon status:"
+echo "  launchctl list | grep claude"
+echo "  tail -f ~/.claude/logs/daemon-stdout.log"
+echo ""

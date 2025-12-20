@@ -74,35 +74,126 @@ def extract_proposed_learning(message_content):
     return None
 
 
+def learning_exists_in_db(title):
+    """Check if a learning with the same title already exists in the database."""
+    try:
+        from agent_memory import hook_db
+        conn = hook_db.get_connection()
+        if conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT id FROM learnings WHERE title = %s LIMIT 1",
+                    (title,)
+                )
+                exists = cur.fetchone() is not None
+            conn.close()
+            return exists
+    except Exception:
+        pass
+    return False
+
+
 def get_last_assistant_message(messages):
     """Get the last assistant message from the transcript."""
     for message in reversed(messages):
-        if message.get('role') == 'assistant':
-            # Get content from the message
-            content = message.get('content')
-            if isinstance(content, list):
-                # Content is an array of content blocks
+        # Support both formats: role='assistant' and type='assistant'
+        is_assistant = (message.get('role') == 'assistant' or
+                       message.get('type') == 'assistant')
+        if not is_assistant:
+            continue
+
+        # Content can be in 'content' or 'message' field
+        content = message.get('content') or message.get('message')
+        if content is None:
+            continue
+
+        if isinstance(content, list):
+            text_parts = []
+            for block in content:
+                if isinstance(block, dict) and block.get('type') == 'text':
+                    text_parts.append(block.get('text', ''))
+            if text_parts:
+                return '\n'.join(text_parts)
+        elif isinstance(content, str):
+            return content
+        elif isinstance(content, dict):
+            nested = content.get('content')
+            if isinstance(nested, list):
                 text_parts = []
-                for block in content:
+                for block in nested:
                     if isinstance(block, dict) and block.get('type') == 'text':
                         text_parts.append(block.get('text', ''))
-                return '\n'.join(text_parts)
-            elif isinstance(content, str):
-                return content
+                if text_parts:
+                    return '\n'.join(text_parts)
     return None
 
 
+def get_all_assistant_messages(messages):
+    """Get all assistant messages from the transcript."""
+    assistant_messages = []
+    for message in messages:
+        # Support both formats: role='assistant' and type='assistant'
+        is_assistant = (message.get('role') == 'assistant' or
+                       message.get('type') == 'assistant')
+        if not is_assistant:
+            continue
+
+        # Content can be in 'content' or 'message' field
+        content = message.get('content') or message.get('message')
+        if content is None:
+            continue
+
+        if isinstance(content, list):
+            text_parts = []
+            for block in content:
+                if isinstance(block, dict) and block.get('type') == 'text':
+                    text_parts.append(block.get('text', ''))
+            if text_parts:
+                assistant_messages.append('\n'.join(text_parts))
+        elif isinstance(content, str):
+            assistant_messages.append(content)
+        elif isinstance(content, dict):
+            # Message might be nested in content.content
+            nested = content.get('content')
+            if isinstance(nested, list):
+                text_parts = []
+                for block in nested:
+                    if isinstance(block, dict) and block.get('type') == 'text':
+                        text_parts.append(block.get('text', ''))
+                if text_parts:
+                    assistant_messages.append('\n'.join(text_parts))
+    return assistant_messages
+
+
 def save_learning_to_db(learning_data, session_id, cwd):
-    """Save learning directly to the database (auto-save mode)."""
+    """Save learning via daemon (fast path) or direct DB (fallback)."""
     title = learning_data.get('title', 'Untitled Learning')
     log_event("learning_save_attempt", hook_name="stop", session_id=session_id,
               data={"title": title, "scope": learning_data.get('scope', 'repository')})
 
-    try:
-        from agent_memory import hook_db
+    # Get scope from learning data (default: repository)
+    scope_level = learning_data.get('scope', 'repository')
 
-        # Get scope from learning data (default: repository)
-        scope_level = learning_data.get('scope', 'repository')
+    # Map learning fields to database fields
+    content = learning_data.get('learning', learning_data.get('content', ''))
+    context = learning_data.get('context', '')
+    confidence = learning_data.get('confidence', 'medium')
+    learning_type = learning_data.get('type', 'heuristic')
+
+    # Build full content with context
+    full_content = f"{content}\n\n**Context**: {context}" if context else content
+
+    # Extract tags from the learning type and confidence
+    tags = learning_data.get('tags', [])
+    if learning_type and learning_type not in tags:
+        tags.append(learning_type)
+    if confidence and confidence not in tags:
+        tags.append(confidence)
+
+    # Try daemon first (fast path with connection pooling)
+    try:
+        from agent_memory.daemon_client import is_daemon_running, get_client
+        from agent_memory import hook_db
 
         # Determine repo_identifier and directory_path based on scope
         if scope_level == 'global':
@@ -121,24 +212,28 @@ def save_learning_to_db(learning_data, session_id, cwd):
             repo_identifier = hook_db.get_repo_identifier(cwd)
             directory_path = None
 
-        # Map learning fields to database fields
-        title = learning_data.get('title', 'Untitled Learning')
-        content = learning_data.get('learning', learning_data.get('content', ''))
-        context = learning_data.get('context', '')
-        confidence = learning_data.get('confidence', 'medium')
-        learning_type = learning_data.get('type', 'heuristic')
+        if is_daemon_running():
+            client = get_client()
+            learning_id = client.save_learning(
+                repo_identifier=repo_identifier,
+                title=title,
+                content=full_content,
+                category=learning_type,
+                tags=tags,
+                session_id=session_id,
+                metadata={'confidence': confidence, 'context': context},
+                scope_level=scope_level,
+                directory_path=directory_path
+            )
 
-        # Build full content with context
-        full_content = f"{content}\n\n**Context**: {context}" if context else content
+            if learning_id:
+                log_event("learning_saved", hook_name="stop", session_id=session_id,
+                          data={"learning_id": learning_id, "title": title, "scope": scope_level, "via": "daemon"})
+                # Output confirmation for user visibility
+                print(f"Learning saved: {title}", file=sys.stderr)
+                return True
 
-        # Extract tags from the learning type and confidence
-        tags = learning_data.get('tags', [])
-        if learning_type and learning_type not in tags:
-            tags.append(learning_type)
-        if confidence and confidence not in tags:
-            tags.append(confidence)
-
-        # Save to database with scope
+        # Daemon not running or save failed, fall back to direct DB
         learning_id = hook_db.save_learning(
             repo_identifier=repo_identifier,
             title=title,
@@ -153,12 +248,15 @@ def save_learning_to_db(learning_data, session_id, cwd):
 
         if learning_id:
             log_event("learning_saved", hook_name="stop", session_id=session_id,
-                      data={"learning_id": learning_id, "title": title, "scope": scope_level})
+                      data={"learning_id": learning_id, "title": title, "scope": scope_level, "via": "direct"})
+            # Output confirmation for user visibility
+            print(f"Learning saved: {title}", file=sys.stderr)
+            return True
         else:
             log_event("learning_save_failed", level="ERROR", hook_name="stop",
                       session_id=session_id, data={"title": title}, error="save_learning returned None")
+            return False
 
-        return learning_id is not None
     except ImportError as e:
         log_event("learning_save_failed", level="ERROR", hook_name="stop",
                   session_id=session_id, data={"title": title}, error=f"ImportError: {e}")
@@ -194,18 +292,39 @@ def save_pending_learning(learning_data, session_id, cwd=None):
         return False
 
 
-def extract_learnings_automatically(messages, session_id, cwd):
+def extract_learnings_automatically(messages, session_id, cwd, transcript_path=None):
     """
-    Use LLM to automatically extract learnings from the transcript.
+    Queue extraction for async processing via daemon (fast path) or
+    use synchronous LLM extraction (fallback).
 
     Args:
         messages: List of transcript messages
         session_id: Current session ID
         cwd: Current working directory
+        transcript_path: Path to transcript file (for daemon queuing)
 
     Returns:
-        Number of learnings saved
+        Number of learnings saved (0 if queued for async processing)
     """
+    # Skip if transcript too short (lowered from 10 to capture more sessions)
+    if len(messages) < 5:
+        return 0
+
+    # Try daemon async queue first (instant return, non-blocking)
+    try:
+        from agent_memory.daemon_client import is_daemon_running, get_client
+
+        if is_daemon_running() and transcript_path:
+            client = get_client()
+            success = client.queue_extraction({'transcript_path': transcript_path}, cwd)
+            if success:
+                log_event("extraction_queued", hook_name="stop", session_id=session_id,
+                          data={"transcript": transcript_path})
+                return 0  # Instant return - daemon will process async
+    except ImportError:
+        pass
+
+    # Fallback to synchronous extraction (blocking, but complete)
     with timed_event("auto_extraction", hook_name="stop", session_id=session_id, cwd=cwd) as ctx:
         try:
             from agent_memory.llm_extractor import extract_learnings
@@ -305,25 +424,41 @@ def main():
         if transcript_path and os.path.exists(transcript_path):
             messages = parse_transcript(transcript_path)
 
-            # Get the last assistant message
-            last_message = get_last_assistant_message(messages)
+            # Check ALL assistant messages for proposed learnings (not just the last one)
+            # This ensures learnings proposed earlier in the conversation aren't lost
+            assistant_messages = get_all_assistant_messages(messages)
+            saved_titles = set()  # Track saved titles to avoid duplicates
+            any_learning_saved = False
 
-            proposed_learning = None
-            if last_message:
-                # Extract proposed learning from explicit tags
-                proposed_learning = extract_proposed_learning(last_message)
+            for message in assistant_messages:
+                proposed_learning = extract_proposed_learning(message)
 
                 if proposed_learning:
+                    title = proposed_learning.get('title', '')
+                    # Skip if we already saved this learning in this run
+                    if title in saved_titles:
+                        continue
+
+                    # Skip if this learning already exists in the database (deduplication)
+                    if learning_exists_in_db(title):
+                        log_event("learning_skipped_duplicate", hook_name="stop",
+                                  session_id=session_id, data={"title": title})
+                        saved_titles.add(title)  # Track so we don't check DB again
+                        continue
+
                     # AUTO-SAVE: Try to save directly to database
                     saved_to_db = save_learning_to_db(proposed_learning, session_id, cwd)
 
-                    if not saved_to_db:
+                    if saved_to_db:
+                        saved_titles.add(title)
+                        any_learning_saved = True
+                    else:
                         # Fallback: Save as pending for manual save
                         save_pending_learning(proposed_learning, session_id, cwd)
 
             # AUTOMATIC EXTRACTION: If no explicit learning proposed, try LLM extraction
-            if not proposed_learning:
-                extract_learnings_automatically(messages, session_id, cwd)
+            if not any_learning_saved:
+                extract_learnings_automatically(messages, session_id, cwd, transcript_path)
 
     except Exception as e:
         # Always exit successfully to avoid breaking session stop

@@ -106,6 +106,38 @@ def clear_pending_learning():
         return False
 
 
+def _search_with_fallback(cwd: str, query: str = None, limit: int = 5):
+    """
+    Search learnings via daemon (fast path) or direct DB (fallback).
+
+    Args:
+        cwd: Current working directory
+        query: Optional search query
+        limit: Maximum results
+
+    Returns:
+        List of learning dicts
+    """
+    # Try daemon first (fast path - sub-10ms)
+    try:
+        from agent_memory.daemon_client import is_daemon_running, get_client
+
+        if is_daemon_running():
+            client = get_client()
+            result = client.search_learnings(cwd, query, limit)
+            if result is not None:
+                return result
+    except ImportError:
+        pass
+
+    # Fallback to direct database (slower but works without daemon)
+    try:
+        from agent_memory import hook_db
+        return hook_db.search_learnings_by_scope(cwd, query, limit)
+    except ImportError:
+        return []
+
+
 def main():
     start_time = time.perf_counter()
     session_id = None
@@ -358,10 +390,8 @@ def main():
 
         # Normal prompt - inject relevant learnings as context
         try:
-            from agent_memory import hook_db
-
-            # Search for learnings relevant to the prompt (across all applicable scopes)
-            learnings = hook_db.search_learnings_by_scope(cwd, user_prompt, limit=5)
+            # Search for learnings relevant to the prompt (uses daemon if available)
+            learnings = _search_with_fallback(cwd, user_prompt, limit=5)
 
             log_event("learnings_searched", hook_name="user_prompt_submit",
                       session_id=session_id, data={"count": len(learnings)})

@@ -13,24 +13,69 @@ Supports hierarchical scoping:
 import os
 import sys
 import json
+import time
 import subprocess
 from typing import List, Dict, Optional, Any, Tuple
 
+# Connection health cache - avoid repeated timeout attempts
+_connection_failed_until = 0  # Unix timestamp when connection can be retried
+_FAILURE_COOLDOWN_SECONDS = 60  # How long to wait before retrying after failure
+_CONNECT_TIMEOUT_SECONDS = 2  # TCP connection timeout
+_STATEMENT_TIMEOUT_MS = 3000  # SQL statement timeout in milliseconds
+
+# Git info caching
+_git_info_cache: Dict[str, Tuple[Dict[str, Any], float]] = {}
+_GIT_CACHE_TTL = 300  # 5 minutes
+
+# THREAD SAFETY NOTE:
+# These module-level globals (_connection_failed_until, _git_info_cache) are
+# intentionally used without locks. This is safe because Claude Code hooks
+# execute sequentially in a single-threaded context per session.
+# If this module is reused in a multi-threaded environment, wrap access to
+# these globals with threading.Lock().
+
+
+def is_database_available() -> bool:
+    """Check if we should attempt connection (respects failure cooldown)."""
+    return time.time() > _connection_failed_until
+
+
+def mark_connection_failed():
+    """Mark database as unavailable for a cooldown period."""
+    global _connection_failed_until
+    _connection_failed_until = time.time() + _FAILURE_COOLDOWN_SECONDS
+
 
 def get_connection():
-    """Get a database connection using psycopg2."""
+    """Get a database connection using psycopg2 with timeouts."""
+    # Fast-fail if we recently failed to connect
+    if not is_database_available():
+        return None
+
     try:
         import psycopg2
         from psycopg2.extras import RealDictCursor
 
-        return psycopg2.connect(
+        conn = psycopg2.connect(
             dbname="ai",
             user="ai",
             password="ai",
             host="localhost",
-            port="5532"
+            port="5532",
+            connect_timeout=_CONNECT_TIMEOUT_SECONDS
         )
-    except (ImportError, Exception):
+
+        # Set statement timeout to prevent long-running queries
+        with conn.cursor() as cur:
+            cur.execute(f"SET statement_timeout = {_STATEMENT_TIMEOUT_MS}")
+
+        return conn
+    except ImportError:
+        # psycopg2 not installed
+        return None
+    except Exception:
+        # Connection failed - mark as unavailable for cooldown period
+        mark_connection_failed()
         return None
 
 
@@ -41,6 +86,8 @@ def init_db():
         return False
 
     try:
+        import psycopg2
+
         with conn.cursor() as cur:
             # Create extension if not exists
             cur.execute("CREATE EXTENSION IF NOT EXISTS vector;")
@@ -101,6 +148,14 @@ def init_db():
 
             conn.commit()
         return True
+    except psycopg2.OperationalError as e:
+        mark_connection_failed()
+        print(f"Error initializing database (connection issue): {e}", file=sys.stderr)
+        return False
+    except psycopg2.InterfaceError as e:
+        mark_connection_failed()
+        print(f"Error initializing database (interface issue): {e}", file=sys.stderr)
+        return False
     except Exception as e:
         print(f"Error initializing database: {e}", file=sys.stderr)
         return False
@@ -125,6 +180,7 @@ def search_learnings(repo_identifier: str, query: Optional[str] = None, limit: i
         return []
 
     try:
+        import psycopg2
         import psycopg2.extras
 
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
@@ -152,6 +208,14 @@ def search_learnings(repo_identifier: str, query: Optional[str] = None, limit: i
 
             results = cur.fetchall()
             return [dict(row) for row in results]
+    except psycopg2.OperationalError as e:
+        mark_connection_failed()
+        print(f"Error searching learnings (connection issue): {e}", file=sys.stderr)
+        return []
+    except psycopg2.InterfaceError as e:
+        mark_connection_failed()
+        print(f"Error searching learnings (interface issue): {e}", file=sys.stderr)
+        return []
     except Exception as e:
         print(f"Error searching learnings: {e}", file=sys.stderr)
         return []
@@ -193,6 +257,8 @@ def save_learning(
         return None
 
     try:
+        import psycopg2
+
         with conn.cursor() as cur:
             cur.execute("""
                 INSERT INTO learnings
@@ -205,6 +271,14 @@ def save_learning(
             learning_id = cur.fetchone()[0]
             conn.commit()
             return learning_id
+    except psycopg2.OperationalError as e:
+        mark_connection_failed()
+        print(f"Error saving learning (connection issue): {e}", file=sys.stderr)
+        return None
+    except psycopg2.InterfaceError as e:
+        mark_connection_failed()
+        print(f"Error saving learning (interface issue): {e}", file=sys.stderr)
+        return None
     except Exception as e:
         print(f"Error saving learning: {e}", file=sys.stderr)
         return None
@@ -212,95 +286,89 @@ def save_learning(
         conn.close()
 
 
-def get_repo_identifier(cwd: str) -> str:
+def get_git_info(cwd: str) -> Dict[str, Any]:
     """
-    Get repository identifier from git remote or folder name.
-
-    Args:
-        cwd: Current working directory
-
-    Returns:
-        Repository identifier string
+    Get all git info in a single cached subprocess call.
+    Returns dict with: repo_identifier, git_root, relative_path, org_identifier
     """
+    now = time.time()
+
+    # Check cache
+    if cwd in _git_info_cache:
+        cached_info, cached_time = _git_info_cache[cwd]
+        if now - cached_time < _GIT_CACHE_TTL:
+            return cached_info
+
+    # Default result
+    result = {
+        'repo_identifier': os.path.basename(os.path.abspath(cwd)),
+        'git_root': None,
+        'relative_path': None,
+        'org_identifier': None
+    }
+
     try:
-        # Try to get git remote URL
-        result = subprocess.run(
-            ["git", "config", "--get", "remote.origin.url"],
-            cwd=cwd,
-            capture_output=True,
-            text=True,
-            timeout=5
-        )
-
-        if result.returncode == 0 and result.stdout.strip():
-            remote = result.stdout.strip()
-            # Normalize the remote URL to a consistent identifier
-            # Remove .git suffix if present
-            if remote.endswith('.git'):
-                remote = remote[:-4]
-            # Extract repo name from URL
-            parts = remote.split('/')
-            if len(parts) >= 2:
-                return f"{parts[-2]}/{parts[-1]}"
-            return remote
-    except Exception:
-        pass
-
-    # Fallback to folder name
-    return os.path.basename(os.path.abspath(cwd))
-
-
-def get_git_root(cwd: str) -> Optional[str]:
-    """
-    Get the root directory of the git repository.
-
-    Args:
-        cwd: Current working directory
-
-    Returns:
-        Git root path, or None if not in a git repo
-    """
-    try:
-        result = subprocess.run(
+        # Get git root
+        proc = subprocess.run(
             ["git", "rev-parse", "--show-toplevel"],
             cwd=cwd,
             capture_output=True,
             text=True,
-            timeout=5
+            timeout=1  # Reduced from 5s
         )
-        if result.returncode == 0 and result.stdout.strip():
-            return result.stdout.strip()
-    except Exception:
+
+        if proc.returncode == 0 and proc.stdout.strip():
+            result['git_root'] = proc.stdout.strip()
+
+            # Get remote URL
+            remote_proc = subprocess.run(
+                ["git", "config", "--get", "remote.origin.url"],
+                cwd=cwd,
+                capture_output=True,
+                text=True,
+                timeout=1
+            )
+
+            if remote_proc.returncode == 0 and remote_proc.stdout.strip():
+                remote = remote_proc.stdout.strip()
+                if remote.endswith('.git'):
+                    remote = remote[:-4]
+                parts = remote.split('/')
+                if len(parts) >= 2:
+                    result['repo_identifier'] = f"{parts[-2]}/{parts[-1]}"
+                    result['org_identifier'] = parts[-2]
+
+            # Calculate relative path
+            abs_cwd = os.path.abspath(cwd)
+            if abs_cwd != result['git_root']:
+                try:
+                    rel = os.path.relpath(abs_cwd, result['git_root'])
+                    if rel and rel != '.':
+                        result['relative_path'] = rel
+                except ValueError:
+                    pass
+    except (subprocess.TimeoutExpired, Exception):
         pass
-    return None
+
+    # Cache result
+    _git_info_cache[cwd] = (result, now)
+    return result
+
+
+def get_repo_identifier(cwd: str) -> str:
+    """Get repository identifier with caching."""
+    git_info = get_git_info(cwd)
+    return git_info.get('repo_identifier', os.path.basename(os.path.abspath(cwd)))
+
+
+def get_git_root(cwd: str) -> Optional[str]:
+    """Get the root directory of the git repository (cached)."""
+    return get_git_info(cwd).get('git_root')
 
 
 def get_relative_path(cwd: str) -> Optional[str]:
-    """
-    Get the relative path from the git root to the current directory.
-
-    Args:
-        cwd: Current working directory
-
-    Returns:
-        Relative path from git root, or None if at root or not in git repo
-    """
-    git_root = get_git_root(cwd)
-    if not git_root:
-        return None
-
-    abs_cwd = os.path.abspath(cwd)
-    if abs_cwd == git_root:
-        return None  # At root, no subdirectory
-
-    # Get relative path
-    try:
-        rel_path = os.path.relpath(abs_cwd, git_root)
-        if rel_path and rel_path != '.':
-            return rel_path
-    except ValueError:
-        pass
-    return None
+    """Get the relative path from git root (cached)."""
+    return get_git_info(cwd).get('relative_path')
 
 
 def get_org_identifier(repo_identifier: str) -> Optional[str]:
@@ -369,11 +437,14 @@ def search_learnings_by_scope(
         return []
 
     try:
+        import psycopg2
         import psycopg2.extras
 
-        repo_id = get_repo_identifier(cwd)
-        org_id = get_org_identifier(repo_id)
-        rel_path = get_relative_path(cwd)
+        # Use cached git info instead of multiple subprocess calls
+        git_info = get_git_info(cwd)
+        repo_id = git_info.get('repo_identifier')
+        org_id = git_info.get('org_identifier')
+        rel_path = git_info.get('relative_path')
         path_ancestors = get_path_ancestors(rel_path) if rel_path else []
 
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
@@ -464,6 +535,14 @@ def search_learnings_by_scope(
             results = cur.fetchall()
             return [dict(row) for row in results]
 
+    except psycopg2.OperationalError as e:
+        mark_connection_failed()
+        print(f"Error searching learnings by scope (connection issue): {e}", file=sys.stderr)
+        return []
+    except psycopg2.InterfaceError as e:
+        mark_connection_failed()
+        print(f"Error searching learnings by scope (interface issue): {e}", file=sys.stderr)
+        return []
     except Exception as e:
         print(f"Error searching learnings by scope: {e}", file=sys.stderr)
         return []
