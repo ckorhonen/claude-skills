@@ -1,0 +1,515 @@
+/**
+ * Neon Glow CSS Effects
+ *
+ * Pure CSS effects for retro terminal and cyberpunk aesthetics.
+ * No JavaScript required - all effects are CSS-only.
+ *
+ * Usage:
+ *   <p class="neon-text neon-cyan">Glowing Text</p>
+ *   <div class="crt-container scanlines">Content</div>
+ *   <button class="neon-button">Click Me</button>
+ */
+
+/* ============================================
+   CSS Custom Properties (Themes)
+   ============================================ */
+
+:root {
+  /* Phosphor Green */
+  --phosphor-bright: #00ff00;
+  --phosphor-medium: #00cc00;
+  --phosphor-dim: #009900;
+  --phosphor-muted: #006600;
+  --phosphor-bg: #001100;
+  --phosphor-bg-deep: #000800;
+
+  /* Cyberpunk Neon */
+  --cyber-cyan: #00ffff;
+  --cyber-magenta: #ff00ff;
+  --cyber-blue: #0066ff;
+  --cyber-pink: #ff1493;
+  --cyber-yellow: #ffff00;
+  --cyber-bg: #0a0a1a;
+  --cyber-surface: #12121f;
+
+  /* Amber CRT */
+  --amber-bright: #ffb000;
+  --amber-medium: #cc8c00;
+  --amber-dim: #996800;
+  --amber-bg: #1a1000;
+
+  /* Timing */
+  --flicker-duration: 3s;
+  --pulse-duration: 2s;
+  --cursor-blink: 1s;
+}
+
+/* ============================================
+   Base Styles
+   ============================================ */
+
+.terminal-base {
+  font-family: 'GNU Unifont', 'IBM Plex Mono', 'JetBrains Mono',
+               'SF Mono', 'Consolas', monospace;
+  line-height: 1.4;
+  letter-spacing: 0;
+}
+
+.terminal-text {
+  font-size: 14px;
+  white-space: pre;
+  tab-size: 4;
+}
+
+.terminal-header {
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+/* ============================================
+   Neon Text Glow
+   ============================================ */
+
+/* Base neon text effect */
+.neon-text {
+  color: var(--cyber-cyan);
+  text-shadow:
+    0 0 5px #fff,
+    0 0 10px #fff,
+    0 0 20px currentColor,
+    0 0 40px currentColor,
+    0 0 80px currentColor;
+}
+
+/* Intense glow (more layers) */
+.neon-text-intense {
+  color: #fff;
+  text-shadow:
+    0 0 2px #fff,
+    0 0 5px #fff,
+    0 0 10px var(--cyber-cyan),
+    0 0 20px var(--cyber-cyan),
+    0 0 30px var(--cyber-cyan),
+    0 0 40px var(--cyber-cyan),
+    0 0 55px var(--cyber-cyan),
+    0 0 75px var(--cyber-cyan);
+}
+
+/* Color variations */
+.neon-cyan {
+  color: var(--cyber-cyan);
+  text-shadow:
+    0 0 5px #fff,
+    0 0 10px #fff,
+    0 0 20px var(--cyber-cyan),
+    0 0 40px var(--cyber-cyan),
+    0 0 80px var(--cyber-cyan);
+}
+
+.neon-magenta {
+  color: var(--cyber-magenta);
+  text-shadow:
+    0 0 5px #fff,
+    0 0 10px #fff,
+    0 0 20px var(--cyber-magenta),
+    0 0 40px var(--cyber-magenta),
+    0 0 80px var(--cyber-magenta);
+}
+
+.neon-green {
+  color: var(--phosphor-bright);
+  text-shadow:
+    0 0 5px #fff,
+    0 0 10px #fff,
+    0 0 20px var(--phosphor-bright),
+    0 0 40px var(--phosphor-bright),
+    0 0 80px var(--phosphor-bright);
+}
+
+.neon-amber {
+  color: var(--amber-bright);
+  text-shadow:
+    0 0 5px #fff,
+    0 0 10px #fff,
+    0 0 20px var(--amber-bright),
+    0 0 40px var(--amber-bright),
+    0 0 80px var(--amber-bright);
+}
+
+/* Multi-color cyberpunk effect */
+.neon-cyber {
+  color: #fff;
+  text-shadow:
+    0 0 5px #fff,
+    0 0 10px var(--cyber-magenta),
+    0 0 20px var(--cyber-magenta),
+    0 0 40px var(--cyber-cyan),
+    0 0 80px var(--cyber-cyan);
+}
+
+/* ============================================
+   Neon Borders
+   ============================================ */
+
+.neon-border {
+  border: 2px solid var(--cyber-cyan);
+  box-shadow:
+    0 0 5px var(--cyber-cyan),
+    0 0 10px var(--cyber-cyan),
+    inset 0 0 5px var(--cyber-cyan),
+    inset 0 0 10px var(--cyber-cyan);
+}
+
+.neon-border-magenta {
+  border: 2px solid var(--cyber-magenta);
+  box-shadow:
+    0 0 5px var(--cyber-magenta),
+    0 0 10px var(--cyber-magenta),
+    inset 0 0 5px var(--cyber-magenta);
+}
+
+.neon-border-green {
+  border: 2px solid var(--phosphor-bright);
+  box-shadow:
+    0 0 5px var(--phosphor-bright),
+    0 0 10px var(--phosphor-bright),
+    inset 0 0 5px var(--phosphor-bright);
+}
+
+/* ============================================
+   Scanlines
+   ============================================ */
+
+.scanlines {
+  position: relative;
+}
+
+.scanlines::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.15),
+    rgba(0, 0, 0, 0.15) 1px,
+    transparent 1px,
+    transparent 2px
+  );
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* Animated scanlines (scrolling) */
+.scanlines-animated::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.1),
+    rgba(0, 0, 0, 0.1) 1px,
+    transparent 1px,
+    transparent 2px
+  );
+  animation: scanline-scroll 10s linear infinite;
+  pointer-events: none;
+  z-index: 10;
+}
+
+@keyframes scanline-scroll {
+  from { background-position: 0 0; }
+  to { background-position: 0 100px; }
+}
+
+/* Subtle scanlines (less intense) */
+.scanlines-subtle::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.05),
+    rgba(0, 0, 0, 0.05) 1px,
+    transparent 1px,
+    transparent 2px
+  );
+  pointer-events: none;
+}
+
+/* ============================================
+   CRT Container
+   ============================================ */
+
+.crt-container {
+  background: var(--phosphor-bg);
+  border-radius: 20px;
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Vignette effect */
+.crt-container::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 50%,
+    rgba(0, 0, 0, 0.5) 100%
+  );
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* Screen curvature effect */
+.crt-curved {
+  border-radius: 20px / 10px;
+  transform: perspective(1000px) rotateX(2deg);
+}
+
+/* Inner glow */
+.crt-glow {
+  box-shadow:
+    inset 0 0 50px rgba(0, 255, 0, 0.1),
+    0 0 20px rgba(0, 255, 0, 0.2);
+}
+
+/* ============================================
+   Animations
+   ============================================ */
+
+/* Flicker effect */
+@keyframes flicker {
+  0%, 19.999%, 22%, 62.999%, 64%, 64.999%, 70%, 100% {
+    opacity: 1;
+  }
+  20%, 21.999%, 63%, 63.999%, 65%, 69.999% {
+    opacity: 0.95;
+  }
+}
+
+.flicker {
+  animation: flicker var(--flicker-duration) infinite;
+}
+
+/* Subtle flicker (less distracting) */
+@keyframes flicker-subtle {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.98; }
+  52% { opacity: 1; }
+  54% { opacity: 0.96; }
+}
+
+.flicker-subtle {
+  animation: flicker-subtle 0.1s infinite;
+}
+
+/* Pulsing glow */
+@keyframes neon-pulse {
+  0%, 100% {
+    text-shadow:
+      0 0 5px #fff,
+      0 0 10px currentColor,
+      0 0 20px currentColor,
+      0 0 40px currentColor;
+    filter: brightness(1);
+  }
+  50% {
+    text-shadow:
+      0 0 10px #fff,
+      0 0 20px currentColor,
+      0 0 40px currentColor,
+      0 0 80px currentColor;
+    filter: brightness(1.2);
+  }
+}
+
+.neon-pulse {
+  animation: neon-pulse var(--pulse-duration) ease-in-out infinite;
+}
+
+/* Cursor blink */
+@keyframes cursor-blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+.cursor::after {
+  content: '_';
+  animation: cursor-blink var(--cursor-blink) step-end infinite;
+}
+
+.cursor-block::after {
+  content: '\2588'; /* Full block */
+  animation: cursor-blink var(--cursor-blink) step-end infinite;
+}
+
+/* ============================================
+   Buttons
+   ============================================ */
+
+.neon-button {
+  background: transparent;
+  color: var(--cyber-cyan);
+  border: 2px solid var(--cyber-cyan);
+  padding: 10px 20px;
+  font-family: inherit;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow:
+    0 0 5px var(--cyber-cyan),
+    inset 0 0 5px transparent;
+}
+
+.neon-button:hover {
+  background: var(--cyber-cyan);
+  color: var(--cyber-bg);
+  box-shadow:
+    0 0 10px var(--cyber-cyan),
+    0 0 20px var(--cyber-cyan),
+    inset 0 0 10px rgba(255, 255, 255, 0.2);
+}
+
+.neon-button:active {
+  transform: scale(0.98);
+}
+
+/* Button color variants */
+.neon-button-magenta {
+  color: var(--cyber-magenta);
+  border-color: var(--cyber-magenta);
+  box-shadow: 0 0 5px var(--cyber-magenta);
+}
+
+.neon-button-magenta:hover {
+  background: var(--cyber-magenta);
+  box-shadow:
+    0 0 10px var(--cyber-magenta),
+    0 0 20px var(--cyber-magenta);
+}
+
+.neon-button-green {
+  color: var(--phosphor-bright);
+  border-color: var(--phosphor-bright);
+  box-shadow: 0 0 5px var(--phosphor-bright);
+}
+
+.neon-button-green:hover {
+  background: var(--phosphor-bright);
+  color: var(--phosphor-bg);
+  box-shadow:
+    0 0 10px var(--phosphor-bright),
+    0 0 20px var(--phosphor-bright);
+}
+
+/* ============================================
+   Input Fields
+   ============================================ */
+
+.neon-input {
+  background: transparent;
+  color: var(--cyber-cyan);
+  border: 1px solid var(--cyber-cyan);
+  padding: 10px 15px;
+  font-family: inherit;
+  font-size: 14px;
+  outline: none;
+  transition: all 0.3s ease;
+}
+
+.neon-input:focus {
+  border-color: var(--cyber-cyan);
+  box-shadow:
+    0 0 5px var(--cyber-cyan),
+    0 0 10px var(--cyber-cyan),
+    inset 0 0 5px rgba(0, 255, 255, 0.1);
+}
+
+.neon-input::placeholder {
+  color: var(--cyber-cyan);
+  opacity: 0.5;
+}
+
+/* ============================================
+   Chromatic Aberration (Experimental)
+   ============================================ */
+
+.chromatic {
+  position: relative;
+}
+
+.chromatic::before,
+.chromatic::after {
+  content: attr(data-text);
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.8;
+}
+
+.chromatic::before {
+  color: #f00;
+  left: 2px;
+  clip-path: polygon(0 0, 100% 0, 100% 45%, 0 45%);
+}
+
+.chromatic::after {
+  color: #0ff;
+  left: -2px;
+  clip-path: polygon(0 55%, 100% 55%, 100% 100%, 0 100%);
+}
+
+/* ============================================
+   Accessibility
+   ============================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  .flicker,
+  .flicker-subtle,
+  .neon-pulse,
+  .scanlines-animated::after,
+  .cursor::after,
+  .cursor-block::after {
+    animation: none;
+  }
+}
+
+/* High contrast mode */
+.high-contrast {
+  --phosphor-bright: #ffffff;
+  --phosphor-bg: #000000;
+  --cyber-cyan: #ffffff;
+  --cyber-bg: #000000;
+}
+
+.high-contrast .neon-text,
+.high-contrast .neon-text-intense {
+  text-shadow: none;
+}
+
+.high-contrast .neon-border {
+  box-shadow: none;
+}
+
+/* ============================================
+   Utility Classes
+   ============================================ */
+
+.bg-phosphor { background-color: var(--phosphor-bg); }
+.bg-phosphor-deep { background-color: var(--phosphor-bg-deep); }
+.bg-cyber { background-color: var(--cyber-bg); }
+.bg-cyber-surface { background-color: var(--cyber-surface); }
+.bg-amber { background-color: var(--amber-bg); }
+
+.text-phosphor { color: var(--phosphor-bright); }
+.text-phosphor-dim { color: var(--phosphor-dim); }
+.text-cyber-cyan { color: var(--cyber-cyan); }
+.text-cyber-magenta { color: var(--cyber-magenta); }
+.text-amber { color: var(--amber-bright); }

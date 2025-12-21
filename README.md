@@ -56,6 +56,7 @@ Skills are located in the `skills/` directory.
 |-------|-------------|-------------------|
 | [gemini-visual](./skills/gemini-visual) | Front-end development assistant powered by [Google Gemini](https://ai.google.dev/) for UI analysis, design comparison, and screenshot-to-code | Analyzing screenshots for layout issues and accessibility; comparing before/after design mockups; extracting color palettes from images; converting screenshots to HTML/CSS; generating designs from text briefs |
 | [gemini-image-generator](./skills/gemini-image-generator) | Generate images using [Google Gemini API](https://ai.google.dev/) for text-to-image, editing, and multi-image reference | Generating app icons and logos; creating marketing banners and social graphics; prototyping UI with AI-generated placeholders; creating game sprites and 2D assets; style transfer from reference images |
+| [tui-designer](./skills/tui-designer) | Design and implement retro/cyberpunk/hacker-style terminal UIs with CRT effects, neon glow, and scanlines | Building terminal-aesthetic interfaces in React ([Tuimorphic](https://github.com/douglance/tuimorphic)) or SwiftUI (Metal shaders); implementing CRT monitor effects; choosing cyberpunk color palettes; writing terminal-style copy; adding phosphor glow and scanline effects |
 
 ### Marketing & Communications
 
@@ -133,7 +134,8 @@ beirut/
 │   ├── opensea-api/
 │   ├── poke-assistant/
 │   ├── poplar-direct-mail/
-│   └── skill-finder/
+│   ├── skill-finder/
+│   └── tui-designer/
 ├── hooks/                     # Memory system hooks
 │   ├── session_start.py
 │   ├── user_prompt_submit.py
