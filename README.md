@@ -78,6 +78,12 @@ Skills are located in the `skills/` directory.
 |-------|-------------|-------------------|
 | [opensea-api](./skills/opensea-api) | Interact with [OpenSea's](https://opensea.io) NFT marketplace API for metadata, listings, and events | Fetching NFT metadata and ownership info; getting collection stats and floor prices; tracking sales and transfers; building NFT dashboards; real-time monitoring with Stream API |
 
+### Game Development
+
+| Skill | Description | Example Use Cases |
+|-------|-------------|-------------------|
+| [playdate-dev](./skills/playdate-dev) | Build [Playdate](https://play.date) games in Lua with the Playdate SDK, including game loop, sprites, graphics, input (crank, buttons, accelerometer), and simulator workflow | Creating Playdate games from scratch; implementing crank-based mechanics; optimizing for the 1-bit display; setting up pdxinfo metadata; building and testing in the Simulator |
+
 ### Meta & Skill Management
 
 | Skill | Description | Example Use Cases |
@@ -132,6 +138,7 @@ beirut/
 │   ├── gsplat-optimizer/
 │   ├── ios-app-tester/
 │   ├── opensea-api/
+│   ├── playdate-dev/
 │   ├── poke-assistant/
 │   ├── poplar-direct-mail/
 │   ├── skill-finder/
