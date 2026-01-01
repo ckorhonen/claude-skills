@@ -46,9 +46,10 @@ Skills are located in the `skills/` directory.
 
 | Skill | Description | Example Use Cases |
 |-------|-------------|-------------------|
+| [bird-fast](./skills/bird-fast) | Interact with X/Twitter from the terminal using [bird CLI](https://github.com/steipete/bird) with browser session authentication | Posting tweets from scripts; reading and analyzing tweet threads; searching for mentions; automating social media workflows; testing Twitter integrations |
 | [codex-advisor](./skills/codex-advisor) | Get second opinions from [OpenAI Codex CLI](https://github.com/openai/codex) for plan reviews, code reviews, and hard problems | Reviewing implementation plans before starting work; code review for security-sensitive changes; debugging problems you've been stuck on for 30+ minutes; validating assumptions about unfamiliar codebases |
-| [ios-app-tester](./skills/ios-app-tester) | Test iOS apps using [AXe CLI](https://github.com/AXe-app/axe-cli) for accessibility auditing, UI automation, and simulator control | Automating iOS Simulator UI tests; auditing accessibility labels for VoiceOver; recording test execution videos; scripting repeatable QA scenarios; CI/CD pipeline integration |
 | [coreml-optimizer](./skills/coreml-optimizer) | Optimize [CoreML](https://developer.apple.com/documentation/coreml) models for iOS and macOS deployment with quantization, palettization, pruning, and Neural Engine targeting | Converting PyTorch/TensorFlow models to CoreML; optimizing model size and inference latency; debugging Neural Engine issues; profiling with Instruments; troubleshooting accuracy degradation after compression |
+| [ios-app-tester](./skills/ios-app-tester) | Test iOS apps using [AXe CLI](https://github.com/AXe-app/axe-cli) for accessibility auditing, UI automation, and simulator control | Automating iOS Simulator UI tests; auditing accessibility labels for VoiceOver; recording test execution videos; scripting repeatable QA scenarios; CI/CD pipeline integration |
 
 ### Visual & Design
 
@@ -130,6 +131,7 @@ pip install -e /path/to/this/repo
 ```
 beirut/
 ├── skills/                    # Claude Code skills
+│   ├── bird-fast/
 │   ├── codex-advisor/
 │   ├── coreml-optimizer/
 │   ├── direct-mail-strategist/
