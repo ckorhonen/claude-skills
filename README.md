@@ -73,6 +73,12 @@ Skills are located in the `skills/` directory.
 |-------|-------------|-------------------|
 | [gsplat-optimizer](./skills/gsplat-optimizer) | Optimize 3D Gaussian Splat scenes for real-time rendering on iOS, macOS, and visionOS using Metal | Analyzing `.ply`/`.splat` files for device targets; generating pruning plans (opacity/size thresholds); LOD scheme design (LODGE, FLoD); compression recommendations (SOGS, CodecGS); Metal profiling checklists |
 
+### Media & Video
+
+| Skill | Description | Example Use Cases |
+|-------|-------------|-------------------|
+| [video-editor](./skills/video-editor) | Expert guidance for video editing with [ffmpeg](https://ffmpeg.org/), encoding best practices, and quality optimization | Encoding/transcoding video files; converting between containers (MKV, MP4); optimizing CRF and preset settings; troubleshooting color space issues; hardsubbing; preparing videos for streaming platforms |
+
 ### Web3 & Blockchain
 
 | Skill | Description | Example Use Cases |
@@ -144,7 +150,8 @@ beirut/
 │   ├── poke-assistant/
 │   ├── poplar-direct-mail/
 │   ├── skill-finder/
-│   └── tui-designer/
+│   ├── tui-designer/
+│   └── video-editor/
 ├── hooks/                     # Memory system hooks
 │   ├── session_start.py
 │   ├── user_prompt_submit.py
