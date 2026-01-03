@@ -7,7 +7,7 @@ description: Get a second opinion from OpenAI Codex CLI for plan reviews, code r
 
 ## Overview
 
-Use OpenAI's Codex CLI as a second-opinion advisor when you need external validation on plans, code reviews, or are stuck on hard problems. Codex runs locally and provides an independent perspective using OpenAI's reasoning models.
+Use OpenAI's Codex CLI as a second-opinion advisor when you need external validation on plans, code reviews, or are stuck on hard problems. This skill uses non-interactive mode (`codex exec`) for scripted/automated usage.
 
 ## When to Use
 
@@ -36,30 +36,83 @@ brew install --cask codex
 ### Authentication
 
 ```bash
-# Option 1: API key
+# Option 1: API key (required for non-interactive mode in CI)
 export OPENAI_API_KEY="your-key"
 
-# Option 2: First run will prompt for ChatGPT login
-codex
+# Option 2: Codex-specific key for CI environments
+export CODEX_API_KEY="your-key"
+
+# Option 3: Interactive login (one-time setup)
+codex --login
 ```
 
-## Default Configuration
+## Model Selection
 
-All commands use GPT-5.2 with maximum reasoning effort (`xhigh`) for thorough analysis:
+Choose the right model for your task:
+
+| Model | Best For | Use When |
+|-------|----------|----------|
+| `gpt-5.2` | General-purpose reasoning | Default for plan reviews, architecture questions, non-coding tasks |
+| `gpt-5.2-codex` | Real-world software engineering | Code reviews, debugging, coding-specific tasks |
+| `gpt-5.1-codex-max` | Extended multi-step workflows | Long-running tasks (>10 min), large migrations, complex refactors |
+| `gpt-5.1-codex-mini` | Budget-conscious projects | Simple reviews when cost matters |
+
+**Recommendation:**
+- Start with `gpt-5.2` for general questions
+- Use `gpt-5.2-codex` when the task is specifically about code
+- Use `gpt-5.1-codex-max` for tasks involving many files or complex multi-step work
+
+## Reasoning Effort Levels
+
+Always use `xhigh` reasoning for thorough analysis:
+
+| Level | Use Case |
+|-------|----------|
+| `xhigh` | **Default** - Deep analysis, security review, architecture decisions |
+| `high` | Complex analysis when latency matters |
+| `medium` | Quick responses for simple tasks |
+| `low`/`none` | Not recommended for advisor use cases |
+
+## Non-Interactive Mode
+
+All commands use `codex exec` for non-interactive execution. This is essential for scripted usage and piping.
+
+### Key Flags
+
+| Flag | Purpose |
+|------|---------|
+| `--json` | Output JSON Lines for machine parsing |
+| `-o <path>` | Save final message to file |
+| `-C <path>` | Set working directory (use `-C .` for current codebase) |
+| `--full-auto` | Enable file modifications (use with caution) |
+| `--sandbox read-only` | Read-only sandbox (default, safest) |
+| `--sandbox workspace-write` | Allow writes to workspace only |
+
+### Output Handling
 
 ```bash
-# Base command pattern
-codex -m gpt-5.2 -c model_reasoning_effort="xhigh" "your prompt"
+# JSON output for parsing
+codex exec -m gpt-5.2 -c model_reasoning_effort="xhigh" \
+  --json "Your prompt" 2>/dev/null
+
+# Save to file
+codex exec -m gpt-5.2 -c model_reasoning_effort="xhigh" \
+  -o output.txt "Your prompt"
+
+# Pipe input and capture output
+git diff | codex exec -m gpt-5.2-codex -c model_reasoning_effort="xhigh" \
+  "Review this diff" > review.txt 2>/dev/null
 ```
 
 ## Command Reference
 
 ### Plan Review
 
-Get feedback on an implementation plan before starting:
+Get feedback on an implementation plan:
 
 ```bash
-codex -m gpt-5.2 -c model_reasoning_effort="xhigh" "Review this implementation plan. Identify potential issues, missing edge cases, security concerns, or better approaches:
+codex exec -m gpt-5.2 -c model_reasoning_effort="xhigh" \
+  "Review this implementation plan. Identify potential issues, missing edge cases, security concerns, or better approaches:
 
 <paste plan here>"
 ```
@@ -67,7 +120,8 @@ codex -m gpt-5.2 -c model_reasoning_effort="xhigh" "Review this implementation p
 For plans involving the current codebase:
 
 ```bash
-codex -m gpt-5.2 -c model_reasoning_effort="xhigh" -C . "Review this implementation plan in the context of this codebase. Identify potential issues, conflicts with existing patterns, or better approaches:
+codex exec -m gpt-5.2 -c model_reasoning_effort="xhigh" -C . \
+  "Review this implementation plan in the context of this codebase. Identify potential issues, conflicts with existing patterns, or better approaches:
 
 <paste plan here>"
 ```
@@ -77,14 +131,21 @@ codex -m gpt-5.2 -c model_reasoning_effort="xhigh" -C . "Review this implementat
 Review code changes for bugs, security issues, and improvements:
 
 ```bash
-# Review specific file
-codex -m gpt-5.2 -c model_reasoning_effort="xhigh" -C . "Review this file for bugs, security vulnerabilities, performance issues, and suggest improvements. Focus on: <specific concerns>"
-
-# Review a diff
-git diff | codex exec -m gpt-5.2 -c model_reasoning_effort="xhigh" "Review this diff for bugs, security issues, and improvements"
-
 # Review staged changes
-git diff --staged | codex exec -m gpt-5.2 -c model_reasoning_effort="xhigh" "Review these changes before commit. Check for bugs, security issues, and adherence to best practices"
+git diff --staged | codex exec -m gpt-5.2-codex -c model_reasoning_effort="xhigh" \
+  "Review these changes before commit. Check for:
+- Bugs or logic errors
+- Security vulnerabilities
+- Performance issues
+- Missing error handling"
+
+# Review a specific diff
+git diff | codex exec -m gpt-5.2-codex -c model_reasoning_effort="xhigh" \
+  "Review this diff for bugs, security issues, and improvements"
+
+# Review with codebase context
+codex exec -m gpt-5.2-codex -c model_reasoning_effort="xhigh" -C . \
+  "Review src/auth/login.ts for bugs, security vulnerabilities, and suggest improvements"
 ```
 
 ### Hard Problem Solving
@@ -92,7 +153,8 @@ git diff --staged | codex exec -m gpt-5.2 -c model_reasoning_effort="xhigh" "Rev
 When stuck on a difficult problem:
 
 ```bash
-codex -m gpt-5.2 -c model_reasoning_effort="xhigh" -C . "I'm stuck on this problem: <description>
+codex exec -m gpt-5.2-codex -c model_reasoning_effort="xhigh" -C . \
+  "I'm stuck on this problem: <description>
 
 What I've tried:
 1. <attempt 1>
@@ -108,7 +170,8 @@ Suggest solutions or debugging approaches."
 Get input on design trade-offs:
 
 ```bash
-codex -m gpt-5.2 -c model_reasoning_effort="xhigh" -C . "I need to decide between these approaches for <feature>:
+codex exec -m gpt-5.2 -c model_reasoning_effort="xhigh" -C . \
+  "I need to decide between these approaches for <feature>:
 
 Option A: <description>
 Option B: <description>
@@ -121,7 +184,8 @@ Given this codebase, which approach is better and why? Consider maintainability,
 When you want a fresh perspective:
 
 ```bash
-codex -m gpt-5.2 -c model_reasoning_effort="xhigh" -C . "Here's my current approach to <problem>: <description>
+codex exec -m gpt-5.2 -c model_reasoning_effort="xhigh" -C . \
+  "Here's my current approach to <problem>: <description>
 
 What are alternative ways to solve this? What am I missing?"
 ```
@@ -130,12 +194,9 @@ What are alternative ways to solve this? What am I missing?"
 
 ### Pre-Implementation Review
 
-Before implementing a complex feature:
-
 ```bash
-# 1. Write your plan
-# 2. Get Codex review
-codex -m gpt-5.2 -c model_reasoning_effort="xhigh" -C . "Review this implementation plan for a user authentication system:
+codex exec -m gpt-5.2 -c model_reasoning_effort="xhigh" -C . \
+  "Review this implementation plan for a user authentication system:
 
 1. Add JWT middleware to Express routes
 2. Create /auth/login and /auth/register endpoints
@@ -147,11 +208,9 @@ Identify missing pieces, security concerns, or better approaches."
 
 ### Pre-Commit Review
 
-Before committing complex changes:
-
 ```bash
-# Review staged changes
-git diff --staged | codex exec -m gpt-5.2 -c model_reasoning_effort="xhigh" "Review these changes for a PR. Check for:
+git diff --staged | codex exec -m gpt-5.2-codex -c model_reasoning_effort="xhigh" \
+  "Review these changes for a PR. Check for:
 - Bugs or logic errors
 - Security vulnerabilities
 - Performance issues
@@ -161,47 +220,42 @@ git diff --staged | codex exec -m gpt-5.2 -c model_reasoning_effort="xhigh" "Rev
 Provide specific line-by-line feedback."
 ```
 
-### Debugging Session
+### Long-Running Migration
 
-When stuck on a bug:
-
-```bash
-codex -m gpt-5.2 -c model_reasoning_effort="xhigh" -C . "I have a race condition in my async queue processor.
-
-Symptoms:
-- Jobs occasionally process twice
-- Happens under high load
-- Logs show overlapping job IDs
-
-Relevant files: src/queue/processor.ts, src/queue/worker.ts
-
-Help me identify the cause and fix."
-```
-
-## Model Selection
-
-This skill defaults to GPT-5.2 with `xhigh` reasoning for maximum quality. Adjust for different needs:
+For complex, multi-file refactors, use `gpt-5.1-codex-max`:
 
 ```bash
-# Default: GPT-5.2 with xhigh reasoning (best quality, slower)
-codex -m gpt-5.2 -c model_reasoning_effort="xhigh" "Complex review..."
+codex exec -m gpt-5.1-codex-max -c model_reasoning_effort="xhigh" -C . \
+  "Help me migrate this codebase from Express to Fastify.
 
-# Faster responses with lower reasoning (for simpler tasks)
-codex -m gpt-5.2 -c model_reasoning_effort="medium" "Quick question..."
-
-# Use o3 for alternative perspective
-codex -m o3 -c model_reasoning_effort="high" "Architecture question..."
+Review the current structure and create a detailed migration plan.
+Identify all files that need changes and potential breaking changes."
 ```
 
-### Reasoning Effort Levels
+## CI/Automation
 
-| Level | Use Case |
-|-------|----------|
-| `minimal` | Quick lookups, simple questions |
-| `low` | Basic syntax checks |
-| `medium` | Standard code review (faster) |
-| `high` | Complex analysis |
-| `xhigh` | Deep reasoning, security review, architecture (default) |
+For CI environments, use `CODEX_API_KEY`:
+
+```bash
+# In CI environment
+CODEX_API_KEY=${{ secrets.CODEX_API_KEY }} \
+  codex exec -m gpt-5.2-codex -c model_reasoning_effort="xhigh" \
+  --json "Review this code" > review.json
+```
+
+### GitHub Actions Example
+
+```yaml
+- name: Code Review with Codex
+  env:
+    CODEX_API_KEY: ${{ secrets.CODEX_API_KEY }}
+  run: |
+    git diff origin/main...HEAD | codex exec \
+      -m gpt-5.2-codex \
+      -c model_reasoning_effort="xhigh" \
+      -o review.txt \
+      "Review this PR diff for bugs and security issues"
+```
 
 ## Best Practices
 
@@ -225,7 +279,7 @@ codex -m o3 -c model_reasoning_effort="high" "Architecture question..."
 1. **Provide context**: Include relevant file paths, error messages, and what you've tried
 2. **Be specific**: Ask focused questions rather than "review everything"
 3. **Use `-C .`**: Let Codex see your codebase for context-aware advice
-4. **Iterate**: Ask follow-up questions to dig deeper
+4. **Choose the right model**: `gpt-5.2` for general, `gpt-5.2-codex` for code, `gpt-5.1-codex-max` for complex
 5. **Verify suggestions**: Always validate Codex's recommendations against your codebase
 
 ## Security Considerations
@@ -236,6 +290,18 @@ codex -m o3 -c model_reasoning_effort="high" "Architecture question..."
 - Use API keys with appropriate rate limits for usage monitoring
 
 ## Troubleshooting
+
+### "stdin is not a terminal"
+
+When piping data, always use `codex exec`:
+
+```bash
+# Wrong - interactive mode doesn't support piped input
+git diff | codex -m gpt-5.2 "Review this..."
+
+# Correct - use exec for non-interactive execution
+git diff | codex exec -m gpt-5.2 "Review this..."
+```
 
 ### "Command not found"
 
@@ -250,25 +316,28 @@ npm install -g @openai/codex
 ### Authentication errors
 
 ```bash
-# Re-authenticate
+# Re-authenticate interactively
 codex --login
 
 # Or set API key
 export OPENAI_API_KEY="your-key"
+export CODEX_API_KEY="your-key"  # For CI
 ```
 
 ### Rate limiting
 
 For heavy usage, use an API key with appropriate tier limits rather than ChatGPT authentication.
 
-### "stdin is not a terminal"
+### No output / empty response
 
-When piping data to codex, use the `exec` subcommand for non-interactive mode:
+Ensure stderr is handled separately from stdout:
 
 ```bash
-# Wrong - interactive mode doesn't support piped input
-git diff | codex -m gpt-5.2 "Review this..."
+# Capture output properly
+codex exec -m gpt-5.2 -c model_reasoning_effort="xhigh" \
+  "Your prompt" 2>/dev/null > output.txt
 
-# Correct - use exec for non-interactive execution
-git diff | codex exec -m gpt-5.2 "Review this..."
+# Or use -o flag
+codex exec -m gpt-5.2 -c model_reasoning_effort="xhigh" \
+  -o output.txt "Your prompt"
 ```
