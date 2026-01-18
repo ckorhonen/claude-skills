@@ -6,38 +6,6 @@ A collection of skills for [Claude Code](https://docs.anthropic.com/en/docs/clau
 
 Here are some skills I've found useful for various projects I've been building. Would love feedback if anyone else finds them useful—have at it! If you're interested in some of my writings on AI and software development, follow me at [CDD.dev](https://cdd.dev).
 
-## Self-Learning Memory System
-
-This repository includes a **self-learning memory subsystem** that allows Claude Code to accumulate and retrieve learnings across sessions using pgvector for hybrid search.
-
-### Quick Start
-
-```bash
-# 1. Start the database
-docker compose up -d
-
-# 2. Install Python dependencies
-pip install -e .
-
-# 3. Set your OpenAI API key (for embeddings)
-export OPENAI_API_KEY=sk-...
-
-# 4. Copy hooks to your project or use this repo directly
-cp -r hooks/ /path/to/project/.claude/hooks/
-cp .claude/settings.local.json /path/to/project/.claude/
-```
-
-### Memory Commands
-
-- `!save-learning` - Save the pending learning to the database
-- `!discard-learning` - Discard the pending learning
-- `!pending-learning` - Show the current pending learning
-- `!learnings <query>` - Search for learnings matching the query
-
-See [CLAUDE.md](./CLAUDE.md) for detailed usage instructions.
-
----
-
 ## Available Skills
 
 Skills are located in the `skills/` directory.
@@ -119,23 +87,10 @@ cp -r skills/<skill-name> ~/.claude/skills/
 cp -r skills/<skill-name> ~/.codex/skills/
 ```
 
-### Memory System Hooks
-
-To use the self-learning memory system in another project:
-
-```bash
-# Copy hooks and configuration
-cp -r hooks/ /path/to/project/hooks/
-cp .claude/settings.local.json /path/to/project/.claude/
-
-# Or install as a Python package
-pip install -e /path/to/this/repo
-```
-
 ## Project Structure
 
 ```
-beirut/
+claude-skills/
 ├── skills/                    # Claude Code skills
 │   ├── bird-fast/
 │   ├── codex-advisor/
@@ -152,25 +107,8 @@ beirut/
 │   ├── skill-finder/
 │   ├── tui-designer/
 │   └── video-editor/
-├── hooks/                     # Memory system hooks
-│   ├── session_start.py
-│   ├── user_prompt_submit.py
-│   ├── stop.py
-│   └── pre_tool_use.py
-├── agent_memory/              # Python package
-│   ├── config.py
-│   ├── knowledge.py
-│   ├── formatting.py
-│   ├── transcript.py
-│   └── cli.py
-├── scripts/
-│   ├── ensure_db.sh
-│   └── test_hooks.md
-├── .claude/
-│   ├── settings.local.json
-│   └── learnings/
-├── docker-compose.yml
-├── pyproject.toml
+├── agents/                    # Agent configurations
+├── commands/                  # Custom commands
 ├── CLAUDE.md
 └── README.md
 ```
