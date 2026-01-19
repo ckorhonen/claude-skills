@@ -14,6 +14,7 @@ Skills are located in the `skills/` directory.
 
 | Skill | Description | Example Use Cases |
 |-------|-------------|-------------------|
+| [agent-browser](./skills/agent-browser) | Headless browser automation using [agent-browser CLI](https://github.com/vercel-labs/agent-browser) with element refs optimized for AI agents | Web scraping with accessibility trees; form automation and submission; browser testing; screenshot capture; multi-session parallel workflows |
 | [bird-fast](./skills/bird-fast) | Interact with X/Twitter from the terminal using [bird CLI](https://github.com/steipete/bird) with browser session authentication | Posting tweets from scripts; reading and analyzing tweet threads; searching for mentions; automating social media workflows; testing Twitter integrations |
 | [codex-advisor](./skills/codex-advisor) | Get second opinions from [OpenAI Codex CLI](https://github.com/openai/codex) for plan reviews, code reviews, and hard problems | Reviewing implementation plans before starting work; code review for security-sensitive changes; debugging problems you've been stuck on for 30+ minutes; validating assumptions about unfamiliar codebases |
 | [coreml-optimizer](./skills/coreml-optimizer) | Optimize [CoreML](https://developer.apple.com/documentation/coreml) models for iOS and macOS deployment with quantization, palettization, pruning, and Neural Engine targeting | Converting PyTorch/TensorFlow models to CoreML; optimizing model size and inference latency; debugging Neural Engine issues; profiling with Instruments; troubleshooting accuracy degradation after compression |
@@ -92,6 +93,7 @@ cp -r skills/<skill-name> ~/.codex/skills/
 ```
 claude-skills/
 ├── skills/                    # Claude Code skills
+│   ├── agent-browser/
 │   ├── bird-fast/
 │   ├── codex-advisor/
 │   ├── coreml-optimizer/
