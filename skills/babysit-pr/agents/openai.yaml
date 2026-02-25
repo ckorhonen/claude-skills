@@ -1,0 +1,4 @@
+interface:
+  display_name: "PR Babysitter"
+  short_description: "Watch CI, reviews, and mergeability for a PR"
+  default_prompt: "Babysit the current PR with minimal manual babysitting: monitor CI checks, reviewer comments, and mergeability; fix valid failures, push updates, and rerun flaky failures up to 3x. Keep one watcher session active and restart --watch immediately after each fix push. Keep going until merge-safe, merged, closed, or a real blocker needs user help."
