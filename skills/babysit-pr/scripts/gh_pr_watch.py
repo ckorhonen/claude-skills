@@ -30,6 +30,10 @@ PENDING_CHECK_STATES = {
 REVIEW_BOT_LOGIN_KEYWORDS = {
     "codex",
 }
+REVIEW_SCORE_PATTERNS = (
+    re.compile(r"\b(?P<value>\d{1,2})\s*/\s*(?P<max>\d{1,2})\b"),
+    re.compile(r"\b(?P<value>\d{1,2})\s+out\s+of\s+(?P<max>\d{1,2})\b", re.IGNORECASE),
+)
 TRUSTED_AUTHOR_ASSOCIATIONS = {
     "OWNER",
     "MEMBER",
@@ -46,6 +50,7 @@ MERGE_CONFLICT_OR_BLOCKING_STATES = {
     "UNKNOWN",
 }
 GREEN_STATE_MAX_POLL_SECONDS = 60 * 60
+MAX_REVIEW_SCORE = 10
 
 
 class GhCommandError(RuntimeError):
@@ -374,11 +379,26 @@ def gh_api_list_paginated(endpoint, repo=None, per_page=100):
     return items
 
 
+def extract_review_score(body):
+    text = str(body or "")
+    for pattern in REVIEW_SCORE_PATTERNS:
+        match = pattern.search(text)
+        if not match:
+            continue
+        value = int(match.group("value"))
+        max_score = int(match.group("max"))
+        if max_score <= 0 or max_score > MAX_REVIEW_SCORE or value < 0 or value > max_score:
+            continue
+        return {"value": value, "max": max_score}
+    return None
+
+
 def normalize_issue_comments(items):
     out = []
     for item in items:
         if not isinstance(item, dict):
             continue
+        body = str(item.get("body") or "")
         out.append(
             {
                 "kind": "issue_comment",
@@ -386,9 +406,10 @@ def normalize_issue_comments(items):
                 "author": extract_login(item.get("user")),
                 "author_association": str(item.get("author_association") or ""),
                 "created_at": str(item.get("created_at") or ""),
-                "body": str(item.get("body") or ""),
+                "body": body,
                 "path": None,
                 "line": None,
+                "score": extract_review_score(body),
                 "url": str(item.get("html_url") or ""),
             }
         )
@@ -403,6 +424,7 @@ def normalize_review_comments(items):
         line = item.get("line")
         if line is None:
             line = item.get("original_line")
+        body = str(item.get("body") or "")
         out.append(
             {
                 "kind": "review_comment",
@@ -410,9 +432,10 @@ def normalize_review_comments(items):
                 "author": extract_login(item.get("user")),
                 "author_association": str(item.get("author_association") or ""),
                 "created_at": str(item.get("created_at") or ""),
-                "body": str(item.get("body") or ""),
+                "body": body,
                 "path": item.get("path"),
                 "line": line,
+                "score": extract_review_score(body),
                 "url": str(item.get("html_url") or ""),
             }
         )
@@ -424,6 +447,7 @@ def normalize_reviews(items):
     for item in items:
         if not isinstance(item, dict):
             continue
+        body = str(item.get("body") or "")
         out.append(
             {
                 "kind": "review",
@@ -431,9 +455,10 @@ def normalize_reviews(items):
                 "author": extract_login(item.get("user")),
                 "author_association": str(item.get("author_association") or ""),
                 "created_at": str(item.get("submitted_at") or item.get("created_at") or ""),
-                "body": str(item.get("body") or ""),
+                "body": body,
                 "path": None,
                 "line": None,
+                "score": extract_review_score(body),
                 "url": str(item.get("html_url") or ""),
             }
         )
@@ -467,7 +492,31 @@ def is_trusted_human_review_author(item, authenticated_login):
     return association in TRUSTED_AUTHOR_ASSOCIATIONS
 
 
-def fetch_new_review_items(pr, state, fresh_state, authenticated_login=None):
+def summarize_review_scores(items, authenticated_login=None):
+    latest_scored_item = None
+    for item in sorted(items, key=lambda entry: (entry.get("created_at") or "", entry.get("id") or "")):
+        if authenticated_login and str(item.get("author") or "") == authenticated_login:
+            continue
+        if isinstance(item.get("score"), dict):
+            latest_scored_item = item
+
+    if not latest_scored_item:
+        return {"explicit_score_present": False}
+
+    score = latest_scored_item["score"]
+    return {
+        "explicit_score_present": True,
+        "current_score": int(score["value"]),
+        "max_score": int(score["max"]),
+        "is_perfect": int(score["value"]) >= int(score["max"]),
+        "author": str(latest_scored_item.get("author") or ""),
+        "kind": str(latest_scored_item.get("kind") or ""),
+        "created_at": str(latest_scored_item.get("created_at") or ""),
+        "url": str(latest_scored_item.get("url") or ""),
+    }
+
+
+def fetch_review_activity(pr, state, authenticated_login=None):
     repo = pr["repo"]
     pr_number = pr["number"]
     endpoints = comment_endpoints(repo, pr_number)
@@ -488,8 +537,8 @@ def fetch_new_review_items(pr, state, fresh_state, authenticated_login=None):
     # On a brand-new state file, surface existing review activity instead of
     # silently treating it as seen. This avoids missing already-pending review
     # feedback when monitoring starts after comments were posted.
-
     new_items = []
+    trusted_items = []
     for item in all_items:
         item_id = item.get("id")
         if not item_id:
@@ -503,6 +552,7 @@ def fetch_new_review_items(pr, state, fresh_state, authenticated_login=None):
         elif not is_trusted_human_review_author(item, authenticated_login):
             continue
 
+        trusted_items.append(item)
         kind = item["kind"]
         if kind == "issue_comment" and item_id in seen_issue:
             continue
@@ -520,10 +570,15 @@ def fetch_new_review_items(pr, state, fresh_state, authenticated_login=None):
             seen_review.add(item_id)
 
     new_items.sort(key=lambda item: (item.get("created_at") or "", item.get("kind") or "", item.get("id") or ""))
+    trusted_items.sort(key=lambda item: (item.get("created_at") or "", item.get("kind") or "", item.get("id") or ""))
     state["seen_issue_comment_ids"] = sorted(seen_issue)
     state["seen_review_comment_ids"] = sorted(seen_review_comment)
     state["seen_review_ids"] = sorted(seen_review)
-    return new_items
+    return {
+        "new_items": new_items,
+        "all_items": trusted_items,
+        "score_summary": summarize_review_scores(trusted_items, authenticated_login=authenticated_login),
+    }
 
 
 def current_retry_count(state, head_sha):
@@ -553,7 +608,7 @@ def unique_actions(actions):
     return out
 
 
-def is_pr_ready_to_merge(pr, checks_summary, new_review_items):
+def is_pr_ready_to_merge(pr, checks_summary, new_review_items, review_score):
     if pr["closed"] or pr["merged"]:
         return False
     if not checks_summary["all_terminal"]:
@@ -561,6 +616,8 @@ def is_pr_ready_to_merge(pr, checks_summary, new_review_items):
     if checks_summary["failed_count"] > 0 or checks_summary["pending_count"] > 0:
         return False
     if new_review_items:
+        return False
+    if review_score.get("explicit_score_present") and not review_score.get("is_perfect"):
         return False
     if str(pr.get("mergeable") or "") != "MERGEABLE":
         return False
@@ -571,7 +628,7 @@ def is_pr_ready_to_merge(pr, checks_summary, new_review_items):
     return True
 
 
-def recommend_actions(pr, checks_summary, failed_runs, new_review_items, retries_used, max_retries):
+def recommend_actions(pr, checks_summary, failed_runs, new_review_items, review_score, retries_used, max_retries):
     actions = []
     if pr["closed"] or pr["merged"]:
         if new_review_items:
@@ -579,12 +636,14 @@ def recommend_actions(pr, checks_summary, failed_runs, new_review_items, retries
         actions.append("stop_pr_closed")
         return unique_actions(actions)
 
-    if is_pr_ready_to_merge(pr, checks_summary, new_review_items):
+    if is_pr_ready_to_merge(pr, checks_summary, new_review_items, review_score):
         actions.append("stop_ready_to_merge")
         return unique_actions(actions)
 
     if new_review_items:
         actions.append("process_review_comment")
+    if review_score.get("explicit_score_present") and not review_score.get("is_perfect"):
+        actions.append("improve_review_score")
 
     has_failed_pr_checks = checks_summary["failed_count"] > 0
     if has_failed_pr_checks:
@@ -603,7 +662,7 @@ def recommend_actions(pr, checks_summary, failed_runs, new_review_items, retries
 def collect_snapshot(args):
     pr = resolve_pr(args.pr, repo_override=args.repo)
     state_path = Path(args.state_file) if args.state_file else default_state_file_for(pr)
-    state, fresh_state = load_state(state_path)
+    state, _ = load_state(state_path)
 
     if not state.get("started_at"):
         state["started_at"] = int(time.time())
@@ -613,12 +672,9 @@ def collect_snapshot(args):
     workflow_runs = get_workflow_runs_for_sha(pr["repo"], pr["head_sha"])
     failed_runs = failed_runs_from_workflow_runs(workflow_runs, pr["head_sha"])
     authenticated_login = get_authenticated_login()
-    new_review_items = fetch_new_review_items(
-        pr,
-        state,
-        fresh_state=fresh_state,
-        authenticated_login=authenticated_login,
-    )
+    review_activity = fetch_review_activity(pr, state, authenticated_login=authenticated_login)
+    new_review_items = review_activity["new_items"]
+    review_score = review_activity["score_summary"]
 
     retries_used = current_retry_count(state, pr["head_sha"])
     actions = recommend_actions(
@@ -626,6 +682,7 @@ def collect_snapshot(args):
         checks_summary,
         failed_runs,
         new_review_items,
+        review_score,
         retries_used,
         args.max_flaky_retries,
     )
@@ -640,6 +697,7 @@ def collect_snapshot(args):
         "checks": checks_summary,
         "failed_runs": failed_runs,
         "new_review_items": new_review_items,
+        "review_score": review_score,
         "actions": actions,
         "retry_state": {
             "current_sha_retries_used": retries_used,
@@ -726,6 +784,7 @@ def snapshot_change_key(snapshot):
     pr = snapshot.get("pr") or {}
     checks = snapshot.get("checks") or {}
     review_items = snapshot.get("new_review_items") or []
+    review_score = snapshot.get("review_score") or {}
     return (
         str(pr.get("head_sha") or ""),
         str(pr.get("state") or ""),
@@ -735,6 +794,9 @@ def snapshot_change_key(snapshot):
         int(checks.get("passed_count") or 0),
         int(checks.get("failed_count") or 0),
         int(checks.get("pending_count") or 0),
+        bool(review_score.get("explicit_score_present")),
+        int(review_score.get("current_score") or 0),
+        int(review_score.get("max_score") or 0),
         tuple(
             (str(item.get("kind") or ""), str(item.get("id") or ""))
             for item in review_items

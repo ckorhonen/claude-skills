@@ -1,125 +1,169 @@
 ---
 name: babysit-pr
-description: Monitor a GitHub pull request end-to-end in my workflow: poll CI, reviews, reruns, and mergeability until merge-safe, with a preference for review-first fixes and minimal manual intervention.
+description: Create, monitor, and shepherd a GitHub pull request end-to-end: respect repo PR templates, watch CI and reviews, fix branch-related failures, address valid comments, and validate post-merge deployment when possible.
 ---
 
-# PR Babysitter (Personalized)
+# PR Lifecycle Operator
 
 ## Objective
-Babysit a PR persistently until one of these terminal outcomes occurs:
 
-- The PR is merged or closed.
-- CI is successful, there are no unresolved review items surfaced by the watcher, required review approval is not blocking merge, and there are no merge-conflict/mergeability risks.
-- A situation requires explicit user help (CI infrastructure issues, ambiguous reviewer intent, exhausted retry budget, permissions issues).
+Own the pull request from creation through post-merge validation with as little manual babysitting as possible.
 
-Keep watching until a terminal outcome. Don’t stop on transient green/idle snapshots.
+Terminal outcomes:
 
-## Inputs
-Accept any of:
+- The PR is merged and the deployment looks healthy.
+- The PR is merge-safe and waiting on humans.
+- A blocker requires user help: ambiguous product intent, permissions, unrelated dirty worktree, external-only outage, or missing deployment visibility.
 
-- No PR argument (infer from current branch via `--pr auto`)
-- PR number
-- PR URL
+Do not stop at "PR created" or "CI is green once." Keep following the PR until one of the terminal outcomes is true.
 
-## Personal defaults for my workflow
+## Defaults
 
-- Prefer the short, structured loop (`--watch`).
-- Use one active watcher session per PR.
-- Prioritize review feedback actions over flaky retries.
-- Default retry budget is 3 attempts per SHA.
-- Keep commits tight and clearly tagged:
-  - `codex: fix CI failure on PR #<n>`
-  - `codex: address PR review feedback (#<n>)`
-- Push only when edits are complete and then immediately resume watch.
+- Poll open PR state every 60 seconds.
+- Use one watcher session per PR.
+- Prefer fixing valid review feedback before retrying flaky CI.
+- Treat reviewer scores as real requirements when explicitly stated.
+- Use repo-native templates and signals before falling back to bundled defaults.
 
-## Core Workflow
+## Preflight
 
-1. Start with `--watch` unless doing one-off diagnostics.
-2. Inspect snapshot `actions`.
-3. If `diagnose_ci_failure` is present: review failed logs and classify.
-4. For branch-related failures: patch, commit, push, and resume.
-5. For review feedback: patch/commit/push and resume.
-6. For likely flaky/unrelated failures: run `--retry-failed-now` when allowed.
-7. Keep checking mergeability state (`mergeable`, `mergeStateStatus`, `reviewDecision`) alongside CI.
-8. If both review and flaky-retry actions are suggested, execute review actions first.
-9. Continue until a terminal stop condition.
+1. Confirm you are on the PR branch, not the default branch.
+2. Confirm `gh auth status` works.
+3. Check for unrelated uncommitted changes before editing.
+4. Resolve the PR template before opening or rewriting the PR body.
 
-## Commands
+## PR Template Handling
 
-### One-shot snapshot
+Use the resolver script first:
 
 ```bash
-python3 skills/babysit-pr/scripts/gh_pr_watch.py --pr auto --once
+python3 skills/babysit-pr/scripts/resolve_pr_template.py --json
 ```
 
-### Continuous watch (JSONL)
+Rules:
+
+- If the repo has a pull request template, preserve its section structure and fill it thoughtfully.
+- If no repo template exists, use the bundled fallback at `assets/default_pr_template.md`.
+- Prefer `gh pr create --body-file` or `gh pr edit --body-file` with a prepared body that mirrors the resolved template.
+- Do not discard checklist items unless they are clearly irrelevant and leaving them blank would be misleading.
+
+## Creation Workflow
+
+1. Resolve the template.
+2. Write a tight PR title.
+3. Build a PR body that includes summary, testing, and rollout notes.
+4. Push the branch.
+5. Create or update the PR.
+6. Start the watcher immediately after the push succeeds.
+
+Helpful commands:
+
+```bash
+gh pr create --base <default-branch> --title "<title>" --body-file <body-file>
+gh pr edit <pr-number> --title "<title>" --body-file <body-file>
+python3 skills/babysit-pr/scripts/gh_pr_watch.py --pr auto --watch
+```
+
+## Watcher Workflow
+
+The watcher emits snapshots and recommended actions. Start with:
 
 ```bash
 python3 skills/babysit-pr/scripts/gh_pr_watch.py --pr auto --watch
 ```
 
-### Retry failed checks for the current SHA
+Key actions:
+
+- `process_review_comment`: inspect the new comment or review and decide whether it is valid, relevant, and actionable on the current branch.
+- `improve_review_score`: a trusted reviewer gave an explicit score below the maximum; do not treat the work as complete yet.
+- `diagnose_ci_failure`: inspect failed logs and decide whether the failure is branch-related.
+- `retry_failed_checks`: rerun failed checks only when the failure looks flaky or unrelated.
+- `stop_ready_to_merge`: CI is green, no outstanding trusted review items remain, and mergeability is clean.
+- `stop_pr_closed`: the PR merged or closed; if merged, transition to deployment monitoring.
+- `stop_exhausted_retries`: flaky retry budget is exhausted; ask the user for help with evidence.
+
+## CI Failure Policy
+
+Use `references/heuristics.md` for the classification checklist.
+
+Default commands:
 
 ```bash
+gh run view <run-id> --json jobs,name,workflowName,conclusion,status,url,headSha
+gh run view <run-id> --log-failed
 python3 skills/babysit-pr/scripts/gh_pr_watch.py --pr auto --retry-failed-now
 ```
 
-### Explicit PR target
+Rules:
 
-```bash
-python3 skills/babysit-pr/scripts/gh_pr_watch.py --pr <number-or-url> --once
-```
+- Branch-related failure: fix it, run the narrowest useful validation, commit, push, and restart the watcher.
+- Flaky or unrelated failure: rerun only after one log inspection confirms it is probably transient.
+- Infra-only failures, auth problems, or missing permissions: surface the blocker and stop.
 
-## CI Failure Classification
+## Comment And Review Handling
 
-Use logs before retrying:
+Apply feedback from trusted humans and approved bots when it is technically correct, actionable, and consistent with user intent.
 
-- `gh run view <run-id> --json jobs,name,workflowName,conclusion,status,url,headSha`
-- `gh run view <run-id> --log-failed`
+When new feedback appears:
 
-Treat failures as branch-related when they are deterministic regressions in changed code paths/tests.
-Treat failures as flaky/unrelated when logs show infra/service/network/transient runner issues.
+1. Validate that the feedback is relevant to the current PR.
+2. If action is required, implement the smallest correct fix.
+3. Run focused validation.
+4. Commit and push.
+5. Restart the watcher immediately.
 
-If uncertain, inspect logs once before rerunning.
+Ignore or escalate feedback when it is:
 
-## Review Comment Handling
+- already resolved
+- clearly noisy
+- ambiguous
+- contradictory with explicit user direction
+- blocked by unrelated dirty changes or a wider product decision
 
-- Address actionable comments from trusted human authors (OWNER/MEMBER/COLLABORATOR or the current operator) and approved review bots (for example Codex-style bot comments).
-- Ignore obvious noise and already-resolved threads.
-- If a valid comment requires edit:
-  1. Patch
-  2. Commit using `codex: address PR review feedback (#<n>)`
-  3. Push
-  4. Restart watcher immediately.
+## Review Scores
 
-## Git Safety Rules
+The watcher now extracts explicit score phrases such as `5/5` and `5 out of 5` from trusted comments and reviews.
+
+Rules:
+
+- If a reviewer gives an explicit score below the maximum, treat that as unfinished work even if the PR is technically mergeable.
+- Aim for the highest score before calling the PR done.
+- After making improvements, wait for updated reviewer feedback rather than assuming the score increased.
+
+## Git Safety
 
 - Work only on the PR head branch.
 - Avoid destructive git actions.
-- Don’t run multiple watcher processes for the same PR.
+- Do not run multiple watcher processes for the same PR.
 - If you find unrelated uncommitted worktree changes, stop and ask the user before editing.
 
-## Stop Conditions
+## Post-Merge Deployment Monitoring
 
-- PR merged/closed
-- Merge-safe green state
-- User-help required blocker reached (permissions, infra-only issues, ambiguous instruction, or retry budget exhaustion)
+After merge, start the deployment watcher:
 
-When terminal is reached, emit a concise summary and stop.
+```bash
+python3 skills/babysit-pr/scripts/gh_deploy_watch.py --pr auto --watch
+```
 
-## Polling Cadence
+The deployment watcher uses GitHub deployment records and deployment-like workflow runs tied to the merge commit. It stops with one of these actions:
 
-- If CI is not green: poll every 60s.
-- After CI is green: exponential backoff 1m→2m→4m→8m→16m→32m→60m; reset on any state change.
-- Continue watching after green to catch late review/mergeability changes.
+- `wait_deployment`: a deployment signal exists and is still running.
+- `wait_for_deployment_signal`: the PR merged recently and the grace window has not expired yet.
+- `alert_deployment_failure`: a deployment signal failed; inspect logs and decide whether to ship a fix.
+- `validate_production`: deployment signals look successful; run the narrowest useful production validation.
+- `no_deployment_signal`: no machine-readable deployment signal was found after the grace window.
+- `stop_pr_not_merged`: the PR is not merged yet.
+
+Use `references/deployment-monitoring.md` for provider-specific follow-up, smoke tests, logs, and metrics guidance.
 
 ## Output Expectations
 
-- Keep status updates concise and occasional during long steady-state.
-- A green transition should get a short progress note.
-- Do not stop while watcher is still active without a terminal condition.
+- Keep progress updates concise during steady-state watching.
+- When you push a fix, summarize the root cause and what changed.
+- When you stop, report the terminal condition and the evidence behind it.
 
 ## References
 
-- `.codex/skills/babysit-pr/references/heuristics.md`
-- `.codex/skills/babysit-pr/references/github-api-notes.md`
+- `references/heuristics.md`
+- `references/github-api-notes.md`
+- `references/deployment-monitoring.md`

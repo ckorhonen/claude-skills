@@ -3,7 +3,7 @@
 # Usage: ./fetch_nft.sh <chain> <contract_address> <token_id>
 # Example: ./fetch_nft.sh ethereum 0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D 1234
 
-set -e
+set -euo pipefail
 
 # Check for required arguments
 if [ $# -lt 3 ]; then
@@ -32,6 +32,10 @@ if ! command -v jq &>/dev/null; then
     exit 1
 fi
 
+encode_path_segment() {
+    jq -rn --arg value "$1" '$value|@uri'
+}
+
 # Validate chain
 VALID_CHAINS="ethereum matic arbitrum optimism base avalanche blast zora solana"
 if ! echo "$VALID_CHAINS" | grep -qw "$CHAIN"; then
@@ -40,6 +44,9 @@ if ! echo "$VALID_CHAINS" | grep -qw "$CHAIN"; then
     exit 1
 fi
 
+ENCODED_CONTRACT=$(encode_path_segment "$CONTRACT")
+ENCODED_TOKEN_ID=$(encode_path_segment "$TOKEN_ID")
+
 # Make API request with retry logic
 max_retries=4
 retry_count=0
@@ -47,7 +54,7 @@ base_delay=2
 
 while [ "$retry_count" -lt "$max_retries" ]; do
     response=$(curl -s -w "\n%{http_code}" \
-        "https://api.opensea.io/api/v2/chain/${CHAIN}/contract/${CONTRACT}/nfts/${TOKEN_ID}" \
+        "https://api.opensea.io/api/v2/chain/${CHAIN}/contract/${ENCODED_CONTRACT}/nfts/${ENCODED_TOKEN_ID}" \
         -H "X-API-KEY: $OPENSEA_API_KEY" \
         -H "Accept: application/json")
 

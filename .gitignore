@@ -44,6 +44,12 @@ $RECYCLE.BIN/
 *.msp
 *.lnk
 
+# Node
+node_modules/
+
+# Generated
+docs/plans/
+
 # Environment
 .env
 .env.local

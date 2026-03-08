@@ -62,7 +62,10 @@ Returns clean Markdown with metadata:
 ```markdown
 ---
 title: Page Title
-tokens: 725
+url: https://example.com
+method: auto
+duration_ms: 725
+fetched_at: 2026-03-07T12:00:00Z
 ---
 
 # Content here...

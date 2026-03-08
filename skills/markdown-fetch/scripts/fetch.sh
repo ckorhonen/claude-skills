@@ -3,6 +3,21 @@
 
 set -euo pipefail
 
+TEMP_JSON=""
+TEMP_OUTPUT=""
+
+cleanup() {
+    if [[ -n "$TEMP_JSON" && -f "$TEMP_JSON" ]]; then
+        rm -f "$TEMP_JSON"
+    fi
+    if [[ -n "$TEMP_OUTPUT" && -f "$TEMP_OUTPUT" ]]; then
+        rm -f "$TEMP_OUTPUT"
+    fi
+    return 0
+}
+
+trap cleanup EXIT
+
 usage() {
     cat << EOF
 Usage: $0 <url> [options]
@@ -76,14 +91,22 @@ if [[ ! "$METHOD" =~ ^(auto|ai|browser)$ ]]; then
     exit 1
 fi
 
+if ! command -v jq &> /dev/null; then
+    echo "Error: jq is required but not installed" >&2
+    echo "Install with: brew install jq" >&2
+    exit 1
+fi
+
 # Build request body
-REQUEST_BODY=$(cat <<EOF
-{
-  "url": "$URL",
-  "method": "$METHOD",
-  "retain_images": $RETAIN_IMAGES
-}
-EOF
+REQUEST_BODY=$(jq -n \
+    --arg url "$URL" \
+    --arg method "$METHOD" \
+    --argjson retain_images "$RETAIN_IMAGES" \
+    '{
+      url: $url,
+      method: $method,
+      retain_images: $retain_images
+    }'
 )
 
 # Fetch content
@@ -96,23 +119,14 @@ HTTP_CODE=$(curl -s -w "%{http_code}" -o "$TEMP_JSON" \
 if [[ "$HTTP_CODE" != "200" ]]; then
     echo "Error: HTTP $HTTP_CODE" >&2
     cat "$TEMP_JSON" >&2
-    rm "$TEMP_JSON"
     exit 1
 fi
 
 # Extract markdown content from JSON response
-if ! command -v jq &> /dev/null; then
-    echo "Error: jq is required but not installed" >&2
-    echo "Install with: brew install jq" >&2
-    rm "$TEMP_JSON"
-    exit 1
-fi
-
 MARKDOWN=$(jq -r '.content' "$TEMP_JSON")
 if [[ "$MARKDOWN" == "null" || -z "$MARKDOWN" ]]; then
     echo "Error: No content in response" >&2
     cat "$TEMP_JSON" >&2
-    rm "$TEMP_JSON"
     exit 1
 fi
 
@@ -137,10 +151,8 @@ EOFMD
 # Output or save
 if [[ -n "$OUTPUT" ]]; then
     mv "$TEMP_OUTPUT" "$OUTPUT"
+    TEMP_OUTPUT=""
     echo "Saved to: $OUTPUT" >&2
 else
     cat "$TEMP_OUTPUT"
-    rm "$TEMP_OUTPUT"
 fi
-
-rm "$TEMP_JSON"

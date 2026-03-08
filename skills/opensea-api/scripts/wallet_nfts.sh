@@ -3,7 +3,7 @@
 # Usage: ./wallet_nfts.sh <chain> <wallet_address> [limit]
 # Example: ./wallet_nfts.sh ethereum 0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045 50
 
-set -e
+set -euo pipefail
 
 # Check for required arguments
 if [ $# -lt 2 ]; then
@@ -32,6 +32,10 @@ if ! command -v jq &>/dev/null; then
     exit 1
 fi
 
+encode_path_segment() {
+    jq -rn --arg value "$1" '$value|@uri'
+}
+
 # Validate chain
 VALID_CHAINS="ethereum matic arbitrum optimism base avalanche blast zora solana"
 if ! echo "$VALID_CHAINS" | grep -qw "$CHAIN"; then
@@ -40,6 +44,13 @@ if ! echo "$VALID_CHAINS" | grep -qw "$CHAIN"; then
     exit 1
 fi
 
+if ! [[ "$LIMIT" =~ ^[0-9]+$ ]]; then
+    echo "Error: limit must be a positive integer"
+    exit 1
+fi
+
+ENCODED_ADDRESS=$(encode_path_segment "$ADDRESS")
+
 # Make API request with retry logic
 max_retries=4
 retry_count=0
@@ -47,7 +58,7 @@ base_delay=2
 
 while [ "$retry_count" -lt "$max_retries" ]; do
     response=$(curl -s -w "\n%{http_code}" \
-        "https://api.opensea.io/api/v2/chain/${CHAIN}/account/${ADDRESS}/nfts?limit=${LIMIT}" \
+        "https://api.opensea.io/api/v2/chain/${CHAIN}/account/${ENCODED_ADDRESS}/nfts?limit=${LIMIT}" \
         -H "X-API-KEY: $OPENSEA_API_KEY" \
         -H "Accept: application/json")
 

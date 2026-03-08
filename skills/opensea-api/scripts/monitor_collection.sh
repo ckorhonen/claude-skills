@@ -3,7 +3,7 @@
 # Usage: ./monitor_collection.sh <collection_slug> [event_type] [interval_seconds]
 # Example: ./monitor_collection.sh boredapeyachtclub sale 30
 
-set -e
+set -euo pipefail
 
 # Check for required arguments
 if [ $# -lt 1 ]; then
@@ -33,6 +33,10 @@ if ! command -v jq &>/dev/null; then
     exit 1
 fi
 
+encode_path_segment() {
+    jq -rn --arg value "$1" '$value|@uri'
+}
+
 # Validate event type
 VALID_EVENTS="sale listing transfer offer cancel"
 if ! echo "$VALID_EVENTS" | grep -qw "$EVENT_TYPE"; then
@@ -40,6 +44,13 @@ if ! echo "$VALID_EVENTS" | grep -qw "$EVENT_TYPE"; then
     echo "Valid types: $VALID_EVENTS"
     exit 1
 fi
+
+if ! [[ "$INTERVAL" =~ ^[0-9]+$ ]]; then
+    echo "Error: interval_seconds must be a positive integer"
+    exit 1
+fi
+
+ENCODED_COLLECTION=$(encode_path_segment "$COLLECTION")
 
 echo "=== Monitoring $COLLECTION for ${EVENT_TYPE}s ==="
 echo "Polling every ${INTERVAL} seconds. Press Ctrl+C to stop."
@@ -53,7 +64,7 @@ fetch_events() {
     local body
 
     response=$(curl -s -w "\n%{http_code}" \
-        "https://api.opensea.io/api/v2/events/collection/${COLLECTION}?event_type=${EVENT_TYPE}&limit=10" \
+        "https://api.opensea.io/api/v2/events/collection/${ENCODED_COLLECTION}?event_type=${EVENT_TYPE}&limit=10" \
         -H "X-API-KEY: $OPENSEA_API_KEY" \
         -H "Accept: application/json")
 
