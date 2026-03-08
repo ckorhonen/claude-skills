@@ -1,4 +1,4 @@
 interface:
-  display_name: "PR Babysitter"
-  short_description: "Watch CI, reviews, and mergeability for a PR"
-  default_prompt: "Babysit the current PR with minimal manual babysitting: monitor CI checks, reviewer comments, and mergeability; fix valid failures, push updates, and rerun flaky failures up to 3x. Keep one watcher session active and restart --watch immediately after each fix push. Keep going until merge-safe, merged, closed, or a real blocker needs user help."
+  display_name: "PR Lifecycle Operator"
+  short_description: "Create, monitor, fix, and validate a PR through deployment"
+  default_prompt: "Own the current pull request end-to-end: respect the repo's PR template, create or update the PR body, start the 60-second watcher after push, address valid CI failures and review feedback, treat explicit reviewer scores as quality gates, and after merge monitor deployment signals until production looks healthy or a real blocker needs user help."

@@ -3,7 +3,7 @@
 # Usage: ./collection_stats.sh <collection_slug>
 # Example: ./collection_stats.sh boredapeyachtclub
 
-set -e
+set -euo pipefail
 
 # Check for required arguments
 if [ $# -lt 1 ]; then
@@ -31,6 +31,12 @@ if ! command -v jq &>/dev/null; then
     exit 1
 fi
 
+encode_path_segment() {
+    jq -rn --arg value "$1" '$value|@uri'
+}
+
+ENCODED_COLLECTION=$(encode_path_segment "$COLLECTION")
+
 # Make API request with retry logic
 max_retries=4
 retry_count=0
@@ -38,7 +44,7 @@ base_delay=2
 
 while [ "$retry_count" -lt "$max_retries" ]; do
     response=$(curl -s -w "\n%{http_code}" \
-        "https://api.opensea.io/api/v2/collections/${COLLECTION}/stats" \
+        "https://api.opensea.io/api/v2/collections/${ENCODED_COLLECTION}/stats" \
         -H "X-API-KEY: $OPENSEA_API_KEY" \
         -H "Accept: application/json")
 

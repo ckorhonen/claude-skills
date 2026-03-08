@@ -33,6 +33,24 @@ RECIPIENT_FIELDS = {
 }
 
 
+def mask_name(name: str) -> str:
+    """Mask a recipient name before logging it."""
+    if not name or name == "Unknown":
+        return name
+
+    parts = [part for part in name.split() if part]
+    if not parts:
+        return "Unknown"
+
+    masked_parts = []
+    for part in parts:
+        if len(part) == 1:
+            masked_parts.append("*")
+        else:
+            masked_parts.append(f"{part[0]}***")
+    return " ".join(masked_parts)
+
+
 def read_recipients(csv_path: str) -> Generator[dict, None, None]:
     """Read recipients from CSV file.
 
@@ -132,9 +150,10 @@ def send_batch(
         name = recipient.get("full_name") or \
                f"{recipient.get('first_name', '')} {recipient.get('last_name', '')}".strip() or \
                "Unknown"
+        masked_name = mask_name(name)
 
         if dry_run:
-            print(f"[DRY RUN] Row {row_num}: Would send to {name}")
+            print(f"[DRY RUN] Row {row_num}: Would send to {masked_name}")
             success_count += 1
             continue
 
@@ -158,7 +177,7 @@ def send_batch(
             response.raise_for_status()
             result = response.json()
             success_count += 1
-            print(f"Row {row_num}: Sent to {name} (ID: {result['id']})")
+            print(f"Row {row_num}: Sent to {masked_name} (ID: {result['id']})")
 
         except requests.exceptions.HTTPError as e:
             error_count += 1
@@ -172,19 +191,19 @@ def send_batch(
 
             errors.append({
                 "row": row_num,
-                "recipient": name,
+                "recipient": masked_name,
                 "error": error_msg
             })
-            print(f"Row {row_num}: ERROR sending to {name} - {error_msg}")
+            print(f"Row {row_num}: ERROR sending to {masked_name} - {error_msg}")
 
         except requests.exceptions.RequestException as e:
             error_count += 1
             errors.append({
                 "row": row_num,
-                "recipient": name,
+                "recipient": masked_name,
                 "error": str(e)
             })
-            print(f"Row {row_num}: ERROR sending to {name} - {e}")
+            print(f"Row {row_num}: ERROR sending to {masked_name} - {e}")
 
         if delay > 0:
             time.sleep(delay)
