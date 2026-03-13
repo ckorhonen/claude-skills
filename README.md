@@ -67,6 +67,7 @@ Skills are located in the `skills/` directory.
 | Skill | Description | Example Use Cases |
 |-------|-------------|-------------------|
 | [cloudflare-manager](./skills/cloudflare-manager) | Comprehensive Cloudflare account management for Workers, KV, R2, Pages, DNS, and Routes | Deploying Workers; managing KV/R2 storage; configuring DNS and routing; Pages deployments |
+| [subway-info](./skills/subway-info) | Real-time NYC subway information via [subwayinfo.nyc](https://subwayinfo.nyc) REST API | Checking train arrivals; viewing service alerts and delays; searching stations; planning subway trips; commute planning |
 
 ### Graphics & 3D
 
