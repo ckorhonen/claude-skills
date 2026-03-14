@@ -97,6 +97,7 @@ Skills are located in the `skills/` directory.
 
 | Skill | Description | Example Use Cases |
 |-------|-------------|-------------------|
+| [autoresearch](./skills/autoresearch) | Run rigorous autonomous experiment loops with explicit hypotheses, repeated trials, structured logs, and local HTML reports | Benchmark-driven performance optimization; prompt or eval-set iteration; experiment tracking with keep/discard decisions; generating per-run visibility into wins, failures, and regressions |
 | [scientific-critical-thinking](./skills/scientific-critical-thinking) | Evaluate research rigor including methodology, experimental design, statistical validity, and biases | Assessing evidence quality (GRADE, Cochrane ROB); critical analysis of scientific claims; reviewing study methodology |
 | [qmd](./skills/qmd) | Local hybrid search for markdown notes and docs | Searching indexed note collections; finding related content; retrieving documents by semantic or keyword match |
 
