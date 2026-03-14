@@ -1,13 +1,13 @@
 ---
 name: subway-info
-description: Get real-time NYC subway information including train arrivals, service alerts, station search, and trip planning via the Subway Info API at subwayinfo.nyc.
+description: Get real-time NYC transit information — subway, bus, ferry, and commuter rail — via the subway-info CLI or REST API at subwayinfo.nyc.
 ---
 
-# Subway Info API
+# Subway Info
 
 ## Overview
 
-Real-time NYC subway information via the Subway Info REST API. Get train arrivals, service alerts, station details, and trip planning for all 496 NYC subway stations.
+Real-time NYC transit information covering subway, bus, ferry, and commuter rail (LIRR/Metro-North). Covers all 496 subway stations, 16,000+ bus stops, NYC Ferry landings, and LIRR/Metro-North stations.
 
 ## When to Use
 
@@ -15,22 +15,76 @@ Real-time NYC subway information via the Subway Info REST API. Get train arrival
 - Getting current service alerts and delays
 - Searching for subway stations by name or line
 - Planning trips between subway stations
-- Building transit-aware applications
+- Checking bus arrivals and routes
+- NYC Ferry schedules and alerts
+- LIRR and Metro-North departures
 - Commute planning and schedule checking
 
-## Prerequisites
+## CLI Tool (Preferred)
 
-- `curl` for HTTP requests
-- `jq` for JSON parsing (`brew install jq` on macOS, `apt install jq` on Linux)
-- No API key required for basic usage (10 req/min anonymous tier)
+If `subway-info` CLI is available, prefer it over raw curl — it handles retries, auth, and outputs token-efficient text by default.
 
-## API Base URL
+### Install
+
+```bash
+# From the mta-mcp repo
+npm run build:cli
+# Binary at ./dist/subway-info
+
+# Or run directly
+npm run cli -- arrivals --station 127
+```
+
+### Subway Commands
+
+```bash
+subway-info arrivals --station 127 --line 1 --direction N --limit 5
+subway-info alerts --line A
+subway-info stations --query "times square"
+subway-info trip --from 127 --to 631
+subway-info status --line L
+```
+
+### Bus Commands
+
+```bash
+subway-info bus arrivals --stop 402940 --route M1
+subway-info bus alerts --route M1
+subway-info bus stops --query "5th ave" --borough Manhattan
+subway-info bus route --route M1
+```
+
+### Ferry Commands
+
+```bash
+subway-info ferry arrivals --landing <id>
+subway-info ferry alerts
+subway-info ferry landings --query "wall street"
+subway-info ferry routes
+```
+
+### Rail Commands (LIRR / Metro-North)
+
+```bash
+subway-info rail departures --station <id> --system LIRR
+subway-info rail alerts --system MNR
+subway-info rail stations --query "penn" --system LIRR
+subway-info rail station --station <id>
+```
+
+### Global Options
 
 ```
-https://subwayinfo.nyc
+--json          Print raw JSON instead of compact text
+--api-key <key> Override $SUBWAY_INFO_API_KEY
+--base-url <url> Override https://subwayinfo.nyc
 ```
 
-## Rate Limits
+## REST API
+
+All data endpoints use `POST` with JSON body. Base URL: `https://subwayinfo.nyc`
+
+### Rate Limits
 
 | Tier | Requests/Min | Authentication |
 |------|--------------|----------------|
@@ -39,52 +93,15 @@ https://subwayinfo.nyc
 | Standard | 300 | `X-API-Key` header |
 | Premium | 1000 | `X-API-Key` header |
 
-Rate limit headers are included in all responses:
+### Subway Endpoints
 
-```
-X-RateLimit-Limit: 10
-X-RateLimit-Remaining: 9
-X-RateLimit-Reset: 1704067260
-X-RateLimit-Tier: anonymous
-```
-
-If you have an API key, include it via header:
-
-```bash
--H "X-API-Key: mta_your_key_here"
-```
-
-## Quick Start
-
-Get arrivals at Times Square:
+#### Get Arrivals
 
 ```bash
 curl -s -X POST https://subwayinfo.nyc/api/arrivals \
   -H "Content-Type: application/json" \
-  -d '{"station_id": "127", "limit": 5}'
+  -d '{"station_id": "127", "line": "1", "direction": "N", "limit": 5}'
 ```
-
-Search for a station:
-
-```bash
-curl -s -X POST https://subwayinfo.nyc/api/stations \
-  -H "Content-Type: application/json" \
-  -d '{"query": "grand central"}'
-```
-
-## Endpoints
-
-All data endpoints use `POST` with JSON body.
-
-### Get Arrivals
-
-Get real-time train arrivals at a station.
-
-```bash
-POST /api/arrivals
-```
-
-**Parameters:**
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -93,55 +110,26 @@ POST /api/arrivals
 | `direction` | "N" \| "S" | No | N=uptown/Bronx, S=downtown/Brooklyn |
 | `limit` | number | No | Max arrivals (default: 10) |
 
-**Example:**
+#### Get Alerts
 
 ```bash
-# Arrivals at Times Square, 1 train only, uptown
-curl -s -X POST https://subwayinfo.nyc/api/arrivals \
-  -H "Content-Type: application/json" \
-  -d '{"station_id": "127", "line": "1", "direction": "N", "limit": 5}'
-```
-
-**Response includes:** arrival times, line, direction, headsign, minutes until arrival.
-
-### Get Alerts
-
-Get active service alerts.
-
-```bash
-POST /api/alerts
-```
-
-**Parameters:**
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `line` | string | No | Filter by line (e.g., "A", "1") |
-| `alert_type` | string | No | Filter by type (e.g., "Delays", "Planned Work") |
-
-**Example:**
-
-```bash
-# All alerts for the A train
 curl -s -X POST https://subwayinfo.nyc/api/alerts \
   -H "Content-Type: application/json" \
   -d '{"line": "A"}'
-
-# All current alerts
-curl -s -X POST https://subwayinfo.nyc/api/alerts \
-  -H "Content-Type: application/json" \
-  -d '{}'
 ```
 
-### Search Stations
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `line` | string | No | Filter by line |
+| `alert_type` | string | No | Filter by type (e.g., "Delays", "Planned Work") |
 
-Find stations by name or line.
+#### Search Stations
 
 ```bash
-POST /api/stations
+curl -s -X POST https://subwayinfo.nyc/api/stations \
+  -H "Content-Type: application/json" \
+  -d '{"query": "union square"}'
 ```
-
-**Parameters:**
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -149,37 +137,7 @@ POST /api/stations
 | `line` | string | No | Filter by line |
 | `limit` | number | No | Max results (default: 10) |
 
-**Example:**
-
-```bash
-# Search by name
-curl -s -X POST https://subwayinfo.nyc/api/stations \
-  -H "Content-Type: application/json" \
-  -d '{"query": "union square"}'
-
-# All stations on the L line
-curl -s -X POST https://subwayinfo.nyc/api/stations \
-  -H "Content-Type: application/json" \
-  -d '{"line": "L", "limit": 50}'
-```
-
-**Response includes:** station ID, name, lines served, coordinates.
-
-### Get Station Info
-
-Get detailed information about a specific station.
-
-```bash
-POST /api/station
-```
-
-**Parameters:**
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `station_id` | string | Yes | Station ID |
-
-**Example:**
+#### Get Station Info
 
 ```bash
 curl -s -X POST https://subwayinfo.nyc/api/station \
@@ -187,41 +145,46 @@ curl -s -X POST https://subwayinfo.nyc/api/station \
   -d '{"station_id": "127"}'
 ```
 
-**Response includes:** station name, lines, ADA accessibility, coordinates, complex info.
-
-### Plan Trip
-
-Get route suggestions between two stations.
+#### Plan Trip
 
 ```bash
-POST /api/trip
-```
-
-**Parameters:**
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `origin_station_id` | string | Yes | Starting station ID |
-| `destination_station_id` | string | Yes | Destination station ID |
-
-**Example:**
-
-```bash
-# Times Square to Grand Central
 curl -s -X POST https://subwayinfo.nyc/api/trip \
   -H "Content-Type: application/json" \
   -d '{"origin_station_id": "127", "destination_station_id": "631"}'
 ```
 
-**Response includes:** route options, transfers, lines used, estimated travel segments.
+### Bus Endpoints
+
+```bash
+POST /api/bus/arrivals   {"stop_id": "402940", "route": "M1", "limit": 5}
+POST /api/bus/alerts     {"route": "M1"}
+POST /api/bus/stops      {"query": "5th ave", "borough": "Manhattan"}
+POST /api/bus/route      {"route_id": "M1"}
+```
+
+### Ferry Endpoints
+
+```bash
+POST /api/ferry/arrivals  {"landing_id": "<id>", "route": "<route>"}
+POST /api/ferry/alerts    {"route": "<route>"}
+POST /api/ferry/landings  {"query": "wall street"}
+POST /api/ferry/routes    {}
+```
+
+### Rail Endpoints (LIRR / Metro-North)
+
+```bash
+POST /api/rail/departures {"station_id": "<id>", "system": "LIRR"}
+POST /api/rail/alerts     {"system": "MNR", "branch": "Hudson"}
+POST /api/rail/stations   {"query": "penn", "system": "LIRR"}
+POST /api/rail/station    {"station_id": "<id>"}
+```
 
 ### Health Check
 
 ```bash
 GET /health
 ```
-
-Returns feed freshness and system status. Useful for checking if real-time data is current.
 
 ## Common Station IDs
 
@@ -233,78 +196,17 @@ Returns feed freshness and system status. Useful for checking if real-time data 
 | 34 St-Penn Station | A28 | A, C, E, 1, 2, 3 |
 | Fulton St | A38 | A, C, J, Z, 2, 3, 4, 5 |
 | Atlantic Av-Barclays Ctr | D24 | B, D, N, Q, R, 2, 3, 4, 5 |
-| Jamaica Center | G05 | E, J, Z |
 
-Use `mta_search_stations` or the `/api/stations` endpoint to find any station ID by name.
-
-## Subway Lines
-
-All NYC subway lines are covered:
-
-- **IRT:** 1, 2, 3, 4, 5, 6, 7
-- **IND:** A, C, E, B, D, F, M, G
-- **BMT:** J, Z, L, N, Q, R, W
-- **Shuttles:** S (42nd St, Franklin Ave, Rockaway)
-- **Staten Island Railway**
+Use `subway-info stations --query "..."` or `/api/stations` to find any station ID.
 
 ## Helper Scripts
 
-### Get Arrivals
-
 ```bash
-./scripts/arrivals.sh <station_name_or_id> [line] [direction] [limit]
-./scripts/arrivals.sh "times square"
-./scripts/arrivals.sh 127 1 N 5
-```
-
-### Check Alerts
-
-```bash
-./scripts/alerts.sh [line]
-./scripts/alerts.sh        # All alerts
-./scripts/alerts.sh A      # A train alerts only
-```
-
-### Plan a Trip
-
-```bash
-./scripts/trip.sh <origin> <destination>
+./scripts/arrivals.sh "times square"          # Search by name
+./scripts/arrivals.sh 127 1 N 5              # By ID with filters
+./scripts/alerts.sh A                         # A train alerts
 ./scripts/trip.sh "times square" "grand central"
-./scripts/trip.sh 127 631
-```
-
-### Line Status Overview
-
-```bash
-./scripts/status.sh [line]
-./scripts/status.sh        # All lines
-./scripts/status.sh L      # L train only
-```
-
-## Common Use Cases
-
-### Check if my train is running on time
-
-```bash
-curl -s -X POST https://subwayinfo.nyc/api/alerts \
-  -H "Content-Type: application/json" \
-  -d '{"line": "L"}' | jq '.content[0].text'
-```
-
-### Get next train home
-
-```bash
-curl -s -X POST https://subwayinfo.nyc/api/arrivals \
-  -H "Content-Type: application/json" \
-  -d '{"station_id": "L03", "line": "L", "direction": "S", "limit": 3}' | jq '.content[0].text'
-```
-
-### Find a station I don't know the ID for
-
-```bash
-curl -s -X POST https://subwayinfo.nyc/api/stations \
-  -H "Content-Type: application/json" \
-  -d '{"query": "canal street"}' | jq '.content[0].text'
+./scripts/status.sh L                         # L train status
 ```
 
 ## Error Handling
@@ -318,11 +220,11 @@ curl -s -X POST https://subwayinfo.nyc/api/stations \
 
 ## Best Practices
 
-- **Search first**: Use `/api/stations` to find station IDs before calling arrivals
+- **Use CLI when available** — handles retries, auth, and compact output automatically
+- **Search first**: Find station IDs before calling arrivals
 - **Filter by line**: Narrow arrivals with `line` parameter for cleaner results
-- **Check health**: Use `/health` to verify feed freshness before relying on arrival times
 - **Cache station IDs**: Station IDs are stable; cache them after first lookup
-- **Respect rate limits**: Anonymous tier is 10 req/min. Add an API key for higher limits
+- **Respect rate limits**: Anonymous tier is 10 req/min; set `SUBWAY_INFO_API_KEY` for higher limits
 
 ## Resources
 

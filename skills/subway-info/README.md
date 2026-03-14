@@ -1,10 +1,10 @@
 # subway-info
 
-Claude Code skill for real-time NYC subway information via [subwayinfo.nyc](https://subwayinfo.nyc).
+Claude Code skill for real-time NYC transit information via [subwayinfo.nyc](https://subwayinfo.nyc).
 
 ## What It Does
 
-Provides Claude with knowledge of the Subway Info REST API to answer transit queries: train arrivals, service alerts, station search, and trip planning for all 496 NYC subway stations.
+Provides Claude with knowledge of the Subway Info CLI and REST API to answer transit queries: subway arrivals, bus stops, ferry landings, commuter rail departures, service alerts, station search, and trip planning across all NYC transit modes.
 
 ## Install
 
