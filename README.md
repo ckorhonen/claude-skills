@@ -32,6 +32,7 @@ Skills are located in the `skills/` directory.
 | [gemini-image-generator](./skills/gemini-image-generator) | Generate images using [Google Gemini API](https://ai.google.dev/) for text-to-image, editing, and multi-image reference | Generating app icons and logos; creating marketing banners and social graphics; prototyping UI with AI-generated placeholders; creating game sprites and 2D assets; style transfer from reference images |
 | [nano-banana](./skills/nano-banana) | Generate and edit AI images using Google's Gemini 3 Pro Image model via MCP | Creating images from text prompts; editing and inpainting photos; generating graphics with text rendering; visual content creation |
 | [imagegen](./skills/imagegen) | Generate and edit images via the OpenAI Image API with a bundled CLI | Text-to-image generation; inpainting and masking; background removal/replacement; product shots; batch variant generation |
+| [ascii-pixel-art](./skills/ascii-pixel-art) | Convert images into animated ASCII art HTML visualizations with pixel effects, background removal, and interactive hover animations | Converting photos to animated ASCII art; generating artistic image-to-text renderings; creating interactive ASCII visualizations with glow and ripple effects; building self-contained HTML art pieces |
 | [tui-designer](./skills/tui-designer) | Design and implement retro/cyberpunk/hacker-style terminal UIs with CRT effects, neon glow, and scanlines | Building terminal-aesthetic interfaces in React ([Tuimorphic](https://github.com/douglance/tuimorphic)) or SwiftUI (Metal shaders); implementing CRT monitor effects; choosing cyberpunk color palettes; writing terminal-style copy; adding phosphor glow and scanline effects |
 | [shadertoy](./skills/shadertoy) | GLSL fragment shaders and procedural graphics for Shadertoy and WebGL | Writing .glsl files; implementing visual effects; creating generative art; working with WebGL shader code; Shadertoy conventions |
 
@@ -156,6 +157,7 @@ cp -r skills/<skill-name> ~/.claude/skills/
 ```bash
 cp -r skills/<skill-name> ~/.codex/skills/
 ```
+
 
 ## Contributing
 
