@@ -1,349 +1,372 @@
 #!/usr/bin/env python3
 """
-ASCII Pixel Art Effect
-Convert an image into an animated, interactive ASCII art HTML visualization.
-
-Usage: python3 ascii_pixel_effect.py <input_image> [output.html]
-
-Dependencies: pip install Pillow rembg
+ASCII Pixel Art Generator
+Transforms images into animated ASCII art with subject detection and dynamic effects.
 """
 
 import sys
-import io
 import base64
-import json
+from io import BytesIO
 from pathlib import Path
 
-from PIL import Image, ImageFilter
-from rembg import remove
+try:
+    from PIL import Image, ImageFilter, ImageDraw
+    import numpy as np
+    from rembg import remove
+except ImportError as e:
+    print(f"Missing dependency: {e}")
+    print("\nInstall required packages:")
+    print("  pip install pillow rembg numpy")
+    sys.exit(1)
 
-# ── Parameters ──────────────────────────────────────────────────────────────
-
+# Configuration
 TARGET_WIDTH = 900
-CELL_W, CELL_H = 11, 14
+CELL_W = 11
+CELL_H = 14
 GRID_STEP = 24
 BLUR_RADIUS = 14
 BG_DARKEN = 0.65
-BG_DESAT = 0.50
-PIXEL_SIZE = 8
+BG_DESATURATE = 0.5
 SUBJECT_THRESHOLD = 0.25
 ASCII_RAMP = "@#S08Xox+=;:-,. "
 BG_DOT_COLOR = (40, 65, 100)
-BG_DOT_OPACITY = 0.30
+BG_DOT_OPACITY = 0.3
 GRID_OPACITY = 0.05
+PIXEL_SIZE = 8  # For pixelation effect
 
 
 def normalize_color(r, g, b):
-    """Normalize color to full saturation."""
+    """Preserve hue, maximize brightness"""
     mx = max(r, g, b, 1)
     return int(r / mx * 255), int(g / mx * 255), int(b / mx * 255)
 
 
-def load_and_resize(path):
-    """Step 1: Load image and resize to TARGET_WIDTH."""
-    img = Image.open(path).convert("RGB")
-    ratio = TARGET_WIDTH / img.width
-    new_h = int(img.height * ratio)
-    return img.resize((TARGET_WIDTH, new_h), Image.LANCZOS)
+def get_luminance(r, g, b):
+    """Calculate perceived luminance"""
+    return 0.299 * r + 0.587 * g + 0.114 * b
 
 
-def build_blurred_bg(img):
-    """Step 2: Build blurred, darkened, desaturated, pixelated background."""
-    blurred = img.filter(ImageFilter.GaussianBlur(radius=BLUR_RADIUS))
+def char_from_lum(lum, is_subject):
+    """Map luminance to ASCII character (inverted for subject)"""
+    if not is_subject:
+        return '.'
+    # Invert: dark = dense char (left), bright = sparse (right)
+    idx = int((1.0 - lum) * (len(ASCII_RAMP) - 1))
+    idx = max(0, min(len(ASCII_RAMP) - 1, idx))
+    return ASCII_RAMP[idx]
 
+
+def process_image(input_path, output_path=None):
+    """
+    7-Step pipeline to generate animated ASCII pixel art
+    """
+    print(f"Processing: {input_path}")
+    
+    # Step 1: Load and resize
+    print("  [1/7] Loading and resizing...")
+    img = Image.open(input_path).convert('RGB')
+    aspect_ratio = img.height / img.width
+    new_height = int(TARGET_WIDTH * aspect_ratio)
+    img = img.resize((TARGET_WIDTH, new_height), Image.Resampling.LANCZOS)
+    
+    # Step 2: Build blurred background
+    print("  [2/7] Building blurred background...")
+    bg = img.copy()
+    bg = bg.filter(ImageFilter.GaussianBlur(radius=BLUR_RADIUS))
+    
     # Darken
-    pixels = blurred.load()
-    w, h = blurred.size
-    for y in range(h):
-        for x in range(w):
-            r, g, b = pixels[x, y]
-            pixels[x, y] = (
-                int(r * BG_DARKEN),
-                int(g * BG_DARKEN),
-                int(b * BG_DARKEN),
-            )
-
-    # Desaturate 50%
-    grey = blurred.convert("L").convert("RGB")
-    blurred = Image.blend(blurred, grey, BG_DESAT)
-
+    bg_array = np.array(bg, dtype=np.float32)
+    bg_array *= BG_DARKEN
+    
+    # Desaturate (blend with grayscale)
+    gray = np.dot(bg_array, [0.299, 0.587, 0.114])
+    gray = np.stack([gray] * 3, axis=-1)
+    bg_array = bg_array * (1 - BG_DESATURATE) + gray * BG_DESATURATE
+    
+    bg = Image.fromarray(bg_array.astype(np.uint8))
+    
     # Pixelate
-    small = blurred.resize(
-        (w // PIXEL_SIZE, h // PIXEL_SIZE), Image.BOX
-    )
-    pixelated = small.resize((w, h), Image.NEAREST)
-    return pixelated
-
-
-def get_subject_mask(img):
-    """Step 3: Remove background using rembg to get alpha mask."""
-    result = remove(img, only_mask=True)
-    if result.mode != "L":
-        result = result.convert("L")
-    return result
-
-
-def build_cell_grid(img, mask):
-    """Step 5: Build grid of cells with ASCII chars, colors, and subject flag."""
-    w, h = img.size
-    cols = w // CELL_W
-    rows = h // CELL_H
-    img_pixels = img.load()
-    mask_pixels = mask.load()
-
+    small_w = TARGET_WIDTH // PIXEL_SIZE
+    small_h = new_height // PIXEL_SIZE
+    bg = bg.resize((small_w, small_h), Image.Resampling.BOX)
+    bg = bg.resize((TARGET_WIDTH, new_height), Image.Resampling.NEAREST)
+    
+    # Step 3: Remove background (subject detection)
+    print("  [3/7] Detecting subject...")
+    mask = remove(img, only_mask=True)
+    mask_array = np.array(mask, dtype=np.float32) / 255.0
+    
+    # Step 4 & 5: Build cell grid and pixel overlay
+    print("  [4/7] Building character grid...")
+    print("  [5/7] Adding pixel overlay...")
+    
+    cols = TARGET_WIDTH // CELL_W
+    rows = new_height // CELL_H
+    
     cells = []
+    img_array = np.array(img)
+    
     for row in range(rows):
-        row_cells = []
         for col in range(cols):
-            # Sample region
-            x0, y0 = col * CELL_W, row * CELL_H
-            x1, y1 = min(x0 + CELL_W, w), min(y0 + CELL_H, h)
-
-            r_sum, g_sum, b_sum, m_sum = 0, 0, 0, 0
-            count = 0
-            for py in range(y0, y1):
-                for px in range(x0, x1):
-                    pr, pg, pb = img_pixels[px, py]
-                    r_sum += pr
-                    g_sum += pg
-                    b_sum += pb
-                    m_sum += mask_pixels[px, py]
-                    count += 1
-
-            if count == 0:
-                count = 1
-
-            avg_r = r_sum // count
-            avg_g = g_sum // count
-            avg_b = b_sum // count
-            avg_mask = m_sum / count / 255.0
-            lum = (0.299 * avg_r + 0.587 * avg_g + 0.114 * avg_b) / 255.0
-
-            is_subject = avg_mask > SUBJECT_THRESHOLD
-
+            y1 = row * CELL_H
+            y2 = min((row + 1) * CELL_H, new_height)
+            x1 = col * CELL_W
+            x2 = min((col + 1) * CELL_W, TARGET_WIDTH)
+            
+            # Sample cell region
+            cell_mask = mask_array[y1:y2, x1:x2]
+            cell_rgb = img_array[y1:y2, x1:x2]
+            
+            # Determine if subject
+            is_subject = cell_mask.mean() > SUBJECT_THRESHOLD
+            
+            # Average RGB
+            r = int(cell_rgb[:, :, 0].mean())
+            g = int(cell_rgb[:, :, 1].mean())
+            b = int(cell_rgb[:, :, 2].mean())
+            
+            lum = get_luminance(r, g, b) / 255.0
+            
             if is_subject:
-                # Inverted luminance: dark area = dense char
-                idx = int((1.0 - lum) * (len(ASCII_RAMP) - 1))
-                idx = max(0, min(idx, len(ASCII_RAMP) - 1))
-                char = ASCII_RAMP[idx]
-                nr, ng, nb = normalize_color(avg_r, avg_g, avg_b)
-                row_cells.append({
-                    "char": char,
-                    "r": nr, "g": ng, "b": nb,
-                    "lum": round(lum, 3),
-                    "subject": True,
-                })
+                char = char_from_lum(lum, True)
+                nr, ng, nb = normalize_color(r, g, b)
+                color = f"rgb({nr},{ng},{nb})"
             else:
-                row_cells.append({
-                    "char": ".",
-                    "r": BG_DOT_COLOR[0],
-                    "g": BG_DOT_COLOR[1],
-                    "b": BG_DOT_COLOR[2],
-                    "lum": round(lum, 3),
-                    "subject": False,
-                })
-        cells.append(row_cells)
+                char = '.'
+                color = f"rgb({BG_DOT_COLOR[0]},{BG_DOT_COLOR[1]},{BG_DOT_COLOR[2]})"
+            
+            # Check if on grid line
+            on_grid = (col * CELL_W) % GRID_STEP < CELL_W and (row * CELL_H) % GRID_STEP < CELL_H
+            
+            cells.append({
+                'char': char,
+                'color': color,
+                'lum': lum,
+                'is_subject': is_subject,
+                'on_grid': on_grid and is_subject,
+                'x': col,
+                'y': row
+            })
+    
+    # Step 6: Encode background image
+    print("  [6/7] Encoding background...")
+    bg_buffer = BytesIO()
+    bg.save(bg_buffer, format='PNG')
+    bg_base64 = base64.b64encode(bg_buffer.getvalue()).decode('utf-8')
+    
+    # Step 7: Generate HTML with animations
+    print("  [7/7] Generating animated HTML...")
+    html = generate_html(bg_base64, cells, cols, rows, TARGET_WIDTH, new_height)
+    
+    # Write output
+    if output_path is None:
+        output_path = Path(input_path).stem + '_ascii.html'
+    
+    with open(output_path, 'w', encoding='utf-8') as f:
+        f.write(html)
+    
+    print(f"✓ Generated: {output_path}")
+    print(f"  Dimensions: {cols}×{rows} cells ({TARGET_WIDTH}×{new_height}px)")
+    print(f"  Subject cells: {sum(1 for c in cells if c['is_subject'])}/{len(cells)}")
 
-    return cells, cols, rows
 
-
-def image_to_data_uri(img, fmt="JPEG", quality=85):
-    """Convert PIL image to base64 data URI."""
-    buf = io.BytesIO()
-    img.save(buf, format=fmt, quality=quality)
-    b64 = base64.b64encode(buf.getvalue()).decode("ascii")
-    mime = "image/jpeg" if fmt == "JPEG" else "image/png"
-    return f"data:{mime};base64,{b64}"
-
-
-def generate_html(bg_data_uri, cells, cols, rows, width, height):
-    """Steps 4, 6, 7: Generate the self-contained HTML with all layers and animation."""
-    cells_json = json.dumps(cells)
-
+def generate_html(bg_base64, cells, cols, rows, width, height):
+    """Generate self-contained HTML with animations"""
+    
+    cells_json = '[\n'
+    for c in cells:
+        cells_json += f"  {{char:'{c['char']}',color:'{c['color']}',lum:{c['lum']:.3f},subj:{str(c['is_subject']).lower()},grid:{str(c['on_grid']).lower()},x:{c['x']},y:{c['y']}}},\n"
+    cells_json += ']'
+    
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ASCII Pixel Art</title>
 <style>
 * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-body {{ background: #000; display: flex; justify-content: center; align-items: center; min-height: 100vh; overflow: hidden; }}
-.wrap {{ position: relative; width: {width}px; height: {height}px; }}
-.wrap img, .wrap canvas {{ position: absolute; top: 0; left: 0; width: 100%; height: 100%; }}
+body {{ 
+  background: #000; 
+  display: flex; 
+  justify-content: center; 
+  align-items: center; 
+  min-height: 100vh;
+  overflow: hidden;
+}}
+.wrap {{ 
+  position: relative; 
+  width: {width}px; 
+  height: {height}px;
+}}
+.wrap > * {{ 
+  position: absolute; 
+  top: 0; 
+  left: 0; 
+  width: 100%; 
+  height: 100%;
+}}
+#bg {{ width: 100%; height: 100%; object-fit: contain; }}
+canvas {{ image-rendering: pixelated; }}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <img src="{bg_data_uri}" alt="background">
+  <img id="bg" src="data:image/png;base64,{bg_base64}" alt="background">
   <canvas id="grid" width="{width}" height="{height}"></canvas>
   <canvas id="ascii" width="{width}" height="{height}"></canvas>
 </div>
 <script>
-(function() {{
-  const CELL_W = {CELL_W}, CELL_H = {CELL_H};
-  const COLS = {cols}, ROWS = {rows};
-  const GRID_STEP = {GRID_STEP};
-  const GRID_OPACITY = {GRID_OPACITY};
-  const BG_DOT_OPACITY = {BG_DOT_OPACITY};
-  const ASCII_RAMP = {json.dumps(ASCII_RAMP)};
-  const cells = {cells_json};
+const CELL_W = {CELL_W};
+const CELL_H = {CELL_H};
+const COLS = {cols};
+const ROWS = {rows};
+const BG_DOT_OPACITY = {BG_DOT_OPACITY};
+const GRID_OPACITY = {GRID_OPACITY};
 
-  // ── Step 4: Pixel grid overlay ──
-  const gridCtx = document.getElementById('grid').getContext('2d');
-  gridCtx.fillStyle = 'rgba(255,255,255,' + GRID_OPACITY + ')';
-  for (let row = 0; row < ROWS; row++) {{
-    for (let col = 0; col < COLS; col++) {{
-      if (!cells[row][col].subject) continue;
-      const x = col * CELL_W, y = row * CELL_H;
-      if (x % GRID_STEP === 0 || y % GRID_STEP === 0) {{
-        gridCtx.fillRect(x, y, CELL_W, CELL_H);
-      }}
-    }}
+const cells = {cells_json};
+
+// Grid canvas (static)
+const gridCanvas = document.getElementById('grid');
+const gridCtx = gridCanvas.getContext('2d');
+gridCtx.strokeStyle = 'rgba(255,255,255,' + GRID_OPACITY + ')';
+gridCtx.lineWidth = 1;
+
+cells.forEach(c => {{
+  if (c.grid) {{
+    gridCtx.strokeRect(c.x * CELL_W, c.y * CELL_H, CELL_W, CELL_H);
   }}
+}});
 
-  // ── Step 7: Animation ──
-  const asciiCanvas = document.getElementById('ascii');
-  const ctx = asciiCanvas.getContext('2d');
-  ctx.font = CELL_H + 'px monospace';
-  ctx.textBaseline = 'top';
+// ASCII canvas (animated)
+const asciiCanvas = document.getElementById('ascii');
+const ctx = asciiCanvas.getContext('2d');
+ctx.font = '14px monospace';
+ctx.textAlign = 'left';
+ctx.textBaseline = 'top';
 
-  let frame = 0;
-  let mouseCol = -100, mouseRow = -100;
-  const flickerMap = new Map();
+let frame = 0;
+let mouseX = -1000;
+let mouseY = -1000;
 
-  asciiCanvas.addEventListener('mousemove', function(e) {{
-    const rect = asciiCanvas.getBoundingClientRect();
-    const scaleX = asciiCanvas.width / rect.width;
-    const scaleY = asciiCanvas.height / rect.height;
-    mouseCol = Math.floor((e.clientX - rect.left) * scaleX / CELL_W);
-    mouseRow = Math.floor((e.clientY - rect.top) * scaleY / CELL_H);
-  }});
+// Flicker state
+const flickers = cells.map(() => ({{ active: false, duration: 0 }}));
 
-  asciiCanvas.addEventListener('mouseleave', function() {{
-    mouseCol = -100; mouseRow = -100;
-  }});
+asciiCanvas.addEventListener('mousemove', (e) => {{
+  const rect = asciiCanvas.getBoundingClientRect();
+  mouseX = (e.clientX - rect.left) * (asciiCanvas.width / rect.width);
+  mouseY = (e.clientY - rect.top) * (asciiCanvas.height / rect.height);
+}});
 
-  function animate() {{
-    ctx.clearRect(0, 0, asciiCanvas.width, asciiCanvas.height);
-    const time = frame * 0.05;
-
-    for (let row = 0; row < ROWS; row++) {{
-      for (let col = 0; col < COLS; col++) {{
-        const cell = cells[row][col];
-        const x = col * CELL_W, y = row * CELL_H;
-        let ch = cell.char;
-        let r = cell.r, g = cell.g, b = cell.b;
-        let alpha = cell.subject ? 1.0 : BG_DOT_OPACITY;
-        let glow = 0;
-
-        if (cell.subject) {{
-          // Sine pulse on bright cells
-          const pulse = 0.85 + 0.15 * Math.sin(time + col * 0.3 + row * 0.2);
-          if (cell.lum > 0.5) {{
-            alpha *= pulse;
-          }}
-
-          // Shine sweep (diagonal)
-          const sweepPos = ((time * 2) % (COLS + ROWS + 20)) - 10;
-          const cellDiag = col + row;
-          const sweepDist = Math.abs(cellDiag - sweepPos);
-          if (sweepDist < 5) {{
-            const sweepIntensity = 1 - sweepDist / 5;
-            r = Math.min(255, r + Math.floor(60 * sweepIntensity));
-            g = Math.min(255, g + Math.floor(60 * sweepIntensity));
-            b = Math.min(255, b + Math.floor(60 * sweepIntensity));
-          }}
-
-          // Glow on high-lum cells
-          if (cell.lum > 0.6) {{
-            glow = cell.lum * pulse * 8;
-          }}
-
-          // Random flicker
-          const key = row * COLS + col;
-          if (flickerMap.has(key)) {{
-            const f = flickerMap.get(key);
-            if (frame < f.end) {{
-              ch = ASCII_RAMP[Math.floor(Math.random() * ASCII_RAMP.length)];
-            }} else {{
-              flickerMap.delete(key);
-            }}
-          }} else if (Math.random() < 0.0025) {{
-            flickerMap.set(key, {{ end: frame + 2 + Math.floor(Math.random() * 7) }});
-          }}
-
-          // Hover ripple
-          const dx = col - mouseCol, dy = row - mouseRow;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          if (dist < 8) {{
-            const ripple = 1 - dist / 8;
-            r = Math.min(255, Math.floor(r * (1 - ripple) + 0 * ripple));
-            g = Math.min(255, Math.floor(g * (1 - ripple) + 255 * ripple));
-            b = Math.min(255, Math.floor(b * (1 - ripple) + 255 * ripple));
-            if (dist < 2) {{
-              ch = ASCII_RAMP[Math.floor(Math.random() * ASCII_RAMP.length)];
-            }}
-          }}
-        }}
-
-        // Draw
-        if (glow > 0) {{
-          ctx.shadowBlur = glow;
-          ctx.shadowColor = 'rgba(' + r + ',' + g + ',' + b + ',0.6)';
-        }} else {{
-          ctx.shadowBlur = 0;
-        }}
-
-        ctx.fillStyle = 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
-        ctx.fillText(ch, x, y);
+function animate() {{
+  ctx.clearRect(0, 0, asciiCanvas.width, asciiCanvas.height);
+  
+  const time = frame * 0.05;
+  const shineOffset = (frame * 2) % (COLS + ROWS);
+  
+  cells.forEach((c, i) => {{
+    const cx = c.x * CELL_W + CELL_W / 2;
+    const cy = c.y * CELL_H + CELL_H / 2;
+    
+    // Distance to mouse
+    const dx = cx - mouseX;
+    const dy = cy - mouseY;
+    const dist = Math.sqrt(dx * dx + dy * dy) / CELL_W;
+    
+    let char = c.char;
+    let color = c.color;
+    let glow = 0;
+    
+    if (c.subj) {{
+      // Pulse
+      const pulse = Math.sin(time + c.x * 0.1 + c.y * 0.1) * 0.5 + 0.5;
+      
+      // Shine sweep
+      const shinePos = c.x + c.y;
+      const shineDist = Math.abs(shinePos - shineOffset);
+      const shine = Math.max(0, 1 - shineDist / 10) * 0.3;
+      
+      // Flicker
+      if (!flickers[i].active && Math.random() < 0.0025) {{
+        flickers[i].active = true;
+        flickers[i].duration = 2 + Math.floor(Math.random() * 7);
       }}
+      if (flickers[i].active) {{
+        flickers[i].duration--;
+        if (flickers[i].duration <= 0) flickers[i].active = false;
+      }}
+      const flicker = flickers[i].active ? 0.3 : 0;
+      
+      // Hover ripple
+      let hover = 0;
+      if (dist < 8) {{
+        hover = (1 - dist / 8) * 0.5;
+        if (dist < 2 && Math.random() < 0.3) {{
+          const chars = '@#S08Xox+=;:-,. ';
+          char = chars[Math.floor(Math.random() * chars.length)];
+        }}
+      }}
+      
+      // Glow based on luminance
+      glow = c.lum * (pulse * 0.5 + 0.5) * 8;
+      
+      // Composite brightness
+      const brightness = 1 + pulse * 0.2 + shine + flicker + hover;
+      
+      // Parse and adjust color
+      const match = c.color.match(/rgb\\((\\d+),(\\d+),(\\d+)\\)/);
+      if (match) {{
+        const r = Math.min(255, Math.floor(parseInt(match[1]) * brightness));
+        const g = Math.min(255, Math.floor(parseInt(match[2]) * brightness));
+        const b = Math.min(255, Math.floor(parseInt(match[3]) * brightness));
+        color = `rgb(${{r}},${{g}},${{b}})`;
+      }}
+      
+      if (hover > 0) {{
+        color = color.replace('rgb', 'rgba').replace(')', `,0.8)`);
+        const mixCyan = hover;
+        color = `rgba(0,255,255,${{mixCyan}})`;
+      }}
+    }} else {{
+      // Background dot
+      color = c.color.replace('rgb', 'rgba').replace(')', `,${{BG_DOT_OPACITY}})`);
     }}
+    
+    // Draw character
+    ctx.fillStyle = color;
+    if (glow > 0) {{
+      ctx.shadowBlur = glow;
+      ctx.shadowColor = color;
+    }}
+    ctx.fillText(char, c.x * CELL_W + 1, c.y * CELL_H);
+    if (glow > 0) {{
+      ctx.shadowBlur = 0;
+    }}
+  }});
+  
+  frame++;
+  requestAnimationFrame(animate);
+}}
 
-    frame++;
-    requestAnimationFrame(animate);
-  }}
-
-  animate();
-}})();
+animate();
 </script>
 </body>
 </html>"""
 
 
-def main():
+if __name__ == '__main__':
     if len(sys.argv) < 2:
-        print("Usage: python3 ascii_pixel_effect.py <image> [output.html]")
+        print("Usage: python3 ascii_pixel_effect.py <input_image> [output.html]")
+        print("\nExample:")
+        print("  python3 ascii_pixel_effect.py portrait.jpg")
+        print("  python3 ascii_pixel_effect.py photo.png artwork.html")
         sys.exit(1)
-
+    
     input_path = sys.argv[1]
-    output_path = sys.argv[2] if len(sys.argv) > 2 else "ascii_art.html"
-
-    print(f"Loading {input_path}...")
-    img = load_and_resize(input_path)
-    w, h = img.size
-    print(f"  Resized to {w}x{h}")
-
-    print("Building blurred background...")
-    bg = build_blurred_bg(img)
-
-    print("Removing background (rembg)...")
-    mask = get_subject_mask(img)
-
-    print("Building cell grid...")
-    cells, cols, rows = build_cell_grid(img, mask)
-    print(f"  Grid: {cols}x{rows} cells")
-
-    print("Encoding background...")
-    bg_uri = image_to_data_uri(bg)
-
-    print("Generating HTML...")
-    html = generate_html(bg_uri, cells, cols, rows, w, h)
-
-    Path(output_path).write_text(html)
-    print(f"Done! Output: {output_path}")
-    print(f"  File size: {len(html) / 1024:.0f} KB")
-
-
-if __name__ == "__main__":
-    main()
+    output_path = sys.argv[2] if len(sys.argv) > 2 else None
+    
+    if not Path(input_path).exists():
+        print(f"Error: File not found: {input_path}")
+        sys.exit(1)
+    
+    process_image(input_path, output_path)
