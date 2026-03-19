@@ -120,10 +120,18 @@ paperclip comment SOU-137 --body "Working on it"  # Add comment
 paperclip comment SOU-137 --body "Done" --agent <agent-id>
 ```
 
-### Checkout issue
+### Checkout & Release
 
 ```bash
-paperclip checkout SOU-137 --agent <agent-id>
+paperclip checkout SOU-137 --agent <agent-id>      # Check out issue
+paperclip release SOU-137                           # Release execution lock
+paperclip release SOU-137 --status done             # Release and set status
+```
+
+### Status Dashboard
+
+```bash
+paperclip status                                    # Company overview
 ```
 
 ### List agents
