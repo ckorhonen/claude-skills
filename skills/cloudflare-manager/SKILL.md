@@ -97,6 +97,82 @@ Claude: [Deploys worker using bun scripts/workers.ts deploy api-handler ./worker
 
 **Performance**: Deployment typically completes in 2-5 seconds
 
+## Common Pitfalls
+
+⚠️ **Most Critical Issues** — Address these first if you encounter problems:
+
+### 1. API Token Scoping (Most Common Cause of Failures)
+
+**The Problem**: API tokens with insufficient or incorrectly scoped permissions fail silently with 403 errors, making debugging very difficult.
+
+**How to Avoid**:
+- When creating a token at https://dash.cloudflare.com/profile/api-tokens, use the **"Edit Cloudflare Workers"** template — don't use "Read All" or custom scopes without the right permissions
+- **Required minimum scopes**:
+  - Account > Workers Scripts > Edit
+  - Account > Workers KV Storage > Edit
+  - Account > Workers R2 Storage > Edit
+  - Zone > DNS > Edit (only if using custom domains)
+- **Verify your token** immediately after creation:
+  ```bash
+  bun scripts/validate-api-key.ts
+  ```
+  This shows exactly which permissions you have. **Do this every time you create or update a token.**
+
+**Quick Diagnosis**:
+```bash
+# If you see "Insufficient permissions", stop and fix the token:
+bun scripts/validate-api-key.ts
+# If any required permission shows ❌, update token at:
+# https://dash.cloudflare.com/profile/api-tokens
+```
+
+---
+
+### 2. Wrangler OAuth Port Conflicts
+
+**The Problem**: `wrangler login` uses port 8976 for the OAuth callback. If another `wrangler dev` or `wrangler pages dev` process is already running, the login flow will fail silently — the browser tab opens but never receives the OAuth redirect.
+
+**How to Avoid**:
+- Before running `wrangler login`, **kill all other Wrangler processes**:
+  ```bash
+  pkill -f wrangler
+  ```
+- Then run login:
+  ```bash
+  wrangler login
+  ```
+- Only start `wrangler dev` or Pages after login completes
+
+**Why This Happens**: Wrangler doesn't queue OAuth callbacks — the first process to bind port 8976 gets the callback. If that's a dev server, login attempts silently fail.
+
+---
+
+### 3. Deployment Timeouts (Large Projects)
+
+**The Problem**: Workers and Pages deployments timeout if the project is too large or network connectivity is unstable. Timeouts also occur during peak Cloudflare load.
+
+**How to Avoid**:
+- **Worker scripts**: Keep under 1MB (smaller = faster cold start)
+- **Pages deployments**: 
+  - Projects with >1000 files may take 5-10 minutes
+  - Use `.cloudflare/` ignore patterns to exclude node_modules, build caches, etc.
+  - For large deployments, use Wrangler CLI directly:
+    ```bash
+    npx wrangler pages deploy ./dist --project-name=my-app
+    ```
+- **Network**: Deploy from a stable connection. Retries use exponential backoff and should succeed automatically
+- **If stuck in pending state**:
+  ```bash
+  bun scripts/pages.ts list-deployments my-app  # Check status
+  # If truly stuck, delete and recreate the project
+  ```
+
+---
+
+## Reference: Troubleshooting Guide
+
+For detailed solutions to specific error messages, see the [Troubleshooting](#troubleshooting) section below.
+
 ### Create and Use KV Storage
 
 To create a KV namespace and store data:
@@ -344,6 +420,13 @@ Starter templates are available in `~/.claude/skills/cloudflare-manager/template
 - **wrangler.toml.template**: Wrangler configuration template
 
 ## Troubleshooting
+
+### Quick Link: High-Priority Issues
+
+For the most critical problems encountered in production, see [Common Pitfalls](#common-pitfalls) above:
+- **API token scoping issues** → [API Token Scoping](#1-api-token-scoping-most-common-cause-of-failures)
+- **Wrangler OAuth failures** → [Wrangler OAuth Port Conflicts](#2-wrangler-oauth-port-conflicts)
+- **Deployment timeouts** → [Deployment Timeouts](#3-deployment-timeouts-large-projects)
 
 ### Common Issues and Solutions
 
