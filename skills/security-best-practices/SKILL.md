@@ -1,6 +1,6 @@
 ---
 name: "security-best-practices"
-description: "Perform language and framework specific security best-practice reviews and suggest improvements. Trigger only when the user explicitly requests security best practices guidance, a security review/report, or secure-by-default coding help. Trigger only for supported languages (python, javascript/typescript, go). Do not trigger for general code review, debugging, or non-security tasks."
+description: "Perform language and framework specific security best-practice reviews and suggest improvements. Trigger when the user requests: security review, security report, threat assessment, vulnerability scan, security audit, secure-by-default coding, hardening guidance, or security best practices guidance. Trigger only for supported languages (python, javascript/typescript, go). Do not trigger for general code review, debugging, or non-security tasks."
 ---
 
 # Security Best Practices
@@ -84,3 +84,83 @@ When assigning an ID for some resource, which will then be used by exposed to th
 ### A note on TLS
 
 While TLS is important for production deployments, most development work will be with TLS disabled or provided by some out-of-scope TLS proxy. Due to this, be very careful about not reporting lack of TLS as a security issue. Also be very careful around use of "secure" cookies. They should only be set if the application will actually be over TLS. If they are set on non-TLS applications (such as when deployed for local dev or testing), it will break the application. You can provide a env or other flag to override setting secure as a way to keep it off until on a TLS production deployment. Additionally avoid recommending HSTS. It is dangerous to use without full understanding of the lasting impacts (can cause major outages and user lockout) and it is not generally recommended for the scope of projects being reviewed by codex.
+
+## Common Pitfalls
+
+This section documents known failure modes and edge cases when applying security best practices:
+
+### 1. Agent Missing Context Vulnerabilities
+**Pitfall:** The agent assumes that security best practices apply universally to all code contexts, without understanding the specific constraints, threat models, or deployment contexts of the user's project.
+
+**Manifestation:**
+- Recommending strict security controls that conflict with the user's documented requirements
+- Flagging security practices as vulnerabilities when the user has already mitigated them through external controls (e.g., network isolation, reverse proxy hardening)
+- Treating all projects with equal security urgency (not all systems require the same threat model)
+
+**Mitigation:**
+- Always ask about the project's threat model, deployment context, and existing security controls before making recommendations
+- Read any security documentation, architectural decisions, or threat analysis the user has provided
+- If applying a fix, verify it doesn't break project-specific requirements or existing mitigations
+- Allow users to override best practices when they've documented why (and suggest adding documentation to the project)
+
+### 2. False Positives on TLS/HTTPS in Local Development
+**Pitfall:** Flagging missing HTTPS or TLS as a security vulnerability in local development, test, or CI environments where TLS is not yet deployed.
+
+**Manifestation:**
+- Recommending HTTPS/TLS enforcement for localhost development servers
+- Suggesting self-signed certificate setup when not needed
+- Not accounting for TLS being handled by an out-of-scope reverse proxy or infrastructure layer
+- Failing to distinguish between development and production deployment contexts
+
+**Mitigation:**
+- Always ask about the deployment context: Is this development, testing, staging, or production?
+- Assume most development work uses TLS disabled or provided by an external proxy
+- Do not report missing TLS as a security issue unless it's explicitly a production deployment
+- Consider providing environment flags to enable TLS-specific protections only in production
+
+### 3. Over-Application of "Secure" Cookie Flags
+**Pitfall:** Recommending setting `Secure`, `HttpOnly`, and `SameSite` cookie flags in development environments, which breaks the application when running over non-TLS connections (localhost, HTTP-only dev servers).
+
+**Manifestation:**
+- Cookies are silently dropped because they're marked `Secure` but the dev server uses HTTP
+- Application login fails mysteriously in local testing
+- Tests fail due to missing authentication cookies
+- Development experience is broken while the code appears "fixed"
+
+**Mitigation:**
+- Always check the current deployment context before recommending secure cookie flags
+- Suggest environment-based configuration: only set `Secure` in production, not in development
+- Document this pattern clearly in any fixes (e.g., `secure: process.env.NODE_ENV === 'production'`)
+- Test cookie-dependent flows (login, session management) after applying changes
+- Warn the user before making this change: "This will break cookie handling in non-TLS environments"
+
+### 4. Missing Guidance on When to Ignore Best Practices
+**Pitfall:** Treating all security best practices as absolute rules, without acknowledging legitimate reasons to deviate, override, or postpone them.
+
+**Manifestation:**
+- Recommending breaking changes for practices that could be phased in over time
+- Flagging workarounds as vulnerabilities without acknowledging technical debt trade-offs
+- Not suggesting ways to deprecate insecure patterns gradually
+- Treating architectural decisions as simple best-practice violations
+
+**Mitigation:**
+- Acknowledge when a best practice conflicts with other requirements (performance, compatibility, timeline)
+- Suggest phased approaches: "This is a concern. We could address it now [option A], postpone with [mitigation B], or accept the risk [with documentation]"
+- Always provide a path forward, even if it's not the ideal "fix now" approach
+- Document the reasoning behind deviations so they can be revisited later
+- Never force a "secure" fix that breaks functionality or user experience without the user's explicit consent
+
+### 5. Passive Detection Without Context
+**Pitfall:** Passively flagging security concerns while the agent is working, without understanding whether the user wants active security monitoring or is focused on feature delivery.
+
+**Manifestation:**
+- Interrupting a feature implementation with security warnings about patterns the user is aware of
+- Flagging inherited code (legacy systems, third-party dependencies) as vulnerabilities when they can't be changed
+- Creating friction in rapid prototyping or proof-of-concept work by treating all code as production-ready
+
+**Mitigation:**
+- Only passively flag **critical** or **very high severity** vulnerabilities
+- Ask about the context: Is this a prototype, legacy system, or production code?
+- Focus on largest-impact vulnerabilities, not minor best-practice deviations
+- If you flag something, offer to explain why and whether it needs to be fixed immediately
+- Be respectful of the user's priorities: they may have good reasons for security trade-offs
