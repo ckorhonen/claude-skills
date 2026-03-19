@@ -99,6 +99,189 @@ Opinionated constraints for building better interfaces with agents.
 | Accent colors | SHOULD limit to one per view |
 | Color tokens | SHOULD use existing theme or Tailwind CSS tokens before introducing new ones |
 
+## Common Pitfalls
+
+The most common UI design failures occur in spacing, color contrast, mobile responsiveness, state management, and visual hierarchy. These gotchas are discovered through repeated agent mistakes when building interfaces.
+
+### 1. Inconsistent Spacing (Arbitrary Margins, No System)
+
+**Problem:** Using arbitrary pixel values (`ml-3`, `gap-5`, `p-2.5`) instead of Tailwind's spacing scale breaks consistency and makes layouts fragile.
+
+```tsx
+// ❌ WRONG - arbitrary, hard to maintain
+<div className="ml-3 mr-5 pt-2.5">Content</div>
+
+// ✅ CORRECT - use system scales
+<div className="ml-4 mr-4 pt-4">Content</div>
+```
+
+**Why it fails:** 
+- Designs look accidental (some spacing is `2px`, some is `16px`, no pattern)
+- Mobile layouts break (spacing doesn't scale proportionally)
+- Alignment is impossible (gaps don't align to grid)
+
+**Fix:**
+- **ALWAYS use Tailwind spacing scale** (`0`, `1`, `2`, `3`, `4`, `6`, `8`, `12`, `16`, `24`, `32`, etc.)
+- **Define spacing systems for common patterns:**
+  - Button padding: `px-4 py-2`
+  - Card padding: `p-6`
+  - Gap between sections: `gap-8`
+  - Nested spacing: `ml-6` (not `ml-3`)
+- **Group related elements** with consistent gaps (use same `gap-x` for all horizontal lists)
+
+### 2. Poor Color Contrast (Accessibility Violations)
+
+**Problem:** Color combinations that fail WCAG AA contrast ratios (4.5:1 for text, 3:1 for UI components) making content illegible for low-vision users.
+
+```tsx
+// ❌ WRONG - gray-400 text on gray-100 background fails contrast
+<p className="text-gray-400 bg-gray-100">Important content</p>
+
+// ✅ CORRECT - gray-700 on gray-100 passes WCAG AA
+<p className="text-gray-700 bg-gray-100">Important content</p>
+```
+
+**Why it fails:**
+- 15% of users have some form of color blindness
+- Users on bright displays (phones) can't read low-contrast text
+- Legal liability (WCAG compliance required in many jurisdictions)
+
+**Fix:**
+- **Use color pairs with sufficient contrast:**
+  - `text-gray-900`/`text-white` on any background (always safe)
+  - `text-gray-700` on light backgrounds
+  - `text-gray-300` on dark backgrounds
+- **Test colors:** Use online contrast checkers (https://webaim.org/resources/contrastchecker/)
+- **Avoid problematic pairs:**
+  - `gray-400` on `gray-100` ❌
+  - `red-500` on `pink-100` ❌
+  - Disabled states: use `text-gray-400` on white, `text-gray-600` on color
+- **For colored text (not gray):** Use darker tints (`red-700` not `red-300`)
+
+### 3. Mobile-Unfriendly Layouts (Small Touch Targets, Horizontal Scroll)
+
+**Problem:** Touch targets smaller than 44×44px, horizontal scrolling, or layouts that don't adapt to narrow viewports.
+
+```tsx
+// ❌ WRONG - button too small, no responsive layout
+<button className="px-2 py-1 text-xs">Click me</button>
+<div className="flex gap-2">
+  <div className="w-80">Sidebar</div>
+  <div className="w-80">Content</div>
+</div>
+
+// ✅ CORRECT - hit target size, responsive stack
+<button className="px-4 py-2 md:px-6 md:py-3">Click me</button>
+<div className="flex flex-col md:flex-row gap-4">
+  <div className="w-full md:w-80">Sidebar</div>
+  <div className="flex-1">Content</div>
+</div>
+```
+
+**Why it fails:**
+- 40% of traffic is mobile; small buttons are impossible to tap
+- Horizontal scrolling is a UX nightmare on phones
+- Layouts that work on desktop can be unusable on mobile
+
+**Fix:**
+- **Minimum touch target: 44×44px**
+  - Buttons: at least `px-4 py-2` (standard: `px-6 py-3`)
+  - Links: wrap in larger clickable area
+- **Stack on mobile:** Use `flex-col` by default, `md:flex-row` for desktop
+- **Use responsive widths:**
+  - `w-full` on mobile, `md:w-80` or `md:w-1/3` on desktop
+  - Use `flex-1` instead of fixed widths for flexible layouts
+- **Test responsiveness:** Check at 375px (iPhone SE) and 768px (tablet) breakpoints
+- **Avoid horizontal scroll:** Never force users to scroll sideways
+
+### 4. Missing States (Loading, Error, Empty, Disabled)
+
+**Problem:** Interfaces that only show the happy path, failing silently when loading, erroring, or empty.
+
+```tsx
+// ❌ WRONG - no feedback states
+<button onClick={save}>Save</button>
+<div>{data.map(item => <ItemCard item={item} />)}</div>
+
+// ✅ CORRECT - all states accounted for
+<button onClick={save} disabled={loading}>
+  {loading ? 'Saving...' : 'Save'}
+</button>
+
+{loading && <LoadingSkeleton />}
+{error && <ErrorAlert message={error} />}
+{!loading && data.length === 0 && <EmptyState action="Create your first item" />}
+{!loading && !error && data.map(item => <ItemCard item={item} />)}
+```
+
+**Why it fails:**
+- Users don't know if action worked (no feedback = perceived failure)
+- Empty lists look broken (not intentionally empty)
+- No recovery path from errors
+
+**Fix:**
+- **Loading states:** Use structural skeletons (not spinners)
+  - Layout remains stable while content loads
+  - Users see what's coming, not just spinning
+- **Error states:** Show next to the failed action
+  - Explain what happened and how to fix it
+  - Include retry button
+- **Empty states:** Make intentional and actionable
+  - "No items yet" → "Create your first item" (button)
+  - Show what empty state means, how to populate
+- **Disabled states:** Always provide visual feedback
+  - `disabled={true}` + `opacity-50` or `cursor-not-allowed`
+  - Never silently disable without explaining why
+
+### 5. Unclear Hierarchy (Everything Looks Equally Important)
+
+**Problem:** All text the same size, all colors the same weight, all spacing the same distance — nothing stands out.
+
+```tsx
+// ❌ WRONG - flat hierarchy
+<div className="text-lg text-gray-700">
+  <div className="text-lg text-gray-700">Subheading</div>
+  <div className="text-lg text-gray-700">Subtitle</div>
+  <button className="text-lg px-4 py-2">Action</button>
+</div>
+
+// ✅ CORRECT - clear hierarchy
+<div>
+  <h1 className="text-3xl font-bold text-gray-900">Title</h1>
+  <h2 className="text-xl font-semibold text-gray-700 mt-6">Subheading</h2>
+  <p className="text-base text-gray-600 mt-2">Subtitle</p>
+  <button className="mt-6 px-6 py-3 bg-blue-600 text-white font-semibold rounded">
+    Primary Action
+  </button>
+</div>
+```
+
+**Why it fails:**
+- Users don't know where to look first
+- Scanning pages is slower (no skimmable structure)
+- Important actions get missed
+
+**Fix:**
+- **Size hierarchy:** 
+  - Headings: `text-3xl` (h1) → `text-2xl` (h2) → `text-xl` (h3)
+  - Body text: `text-base` (paragraphs) → `text-sm` (secondary)
+- **Weight hierarchy:**
+  - Primary actions: `font-bold` or `font-semibold`
+  - Important text: `font-semibold`
+  - Body: `font-normal`
+  - Secondary: `font-normal` with lighter color
+- **Color hierarchy:**
+  - Primary text: `text-gray-900`
+  - Secondary text: `text-gray-600`
+  - Tertiary: `text-gray-500`
+- **Spacing hierarchy:**
+  - Section gaps: `gap-8` (largest)
+  - Component gaps: `gap-4`
+  - Dense content: `gap-2`
+- **One accent color per view:** Use a single color for CTAs, not multiple colors fighting for attention
+
+---
+
 ## Quick Reference
 
 ### Allowed Animation Properties
