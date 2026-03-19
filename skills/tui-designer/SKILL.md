@@ -542,6 +542,223 @@ Ready-to-use starter files:
 
 ---
 
+## Common Pitfalls
+
+This section documents real failure modes and edge cases that break TUI implementations. These are non-obvious gotchas discovered through practical use across platforms.
+
+### Terminal Compatibility Issues
+
+**Problem:** Escape sequences vary across terminal emulators. What works in iTerm2 may fail in older xterm, SSH terminals, or Windows Terminal.
+
+**Common failures:**
+- **256-color vs ANSI:** Terminals support different color depths. Code using `#rgb` hex colors works in modern terminals but falls back to 16-color ANSI on older systems.
+- **Reset sequences:** Forgetting to reset text attributes (`\x1b[0m` or `\x1b[m`) can poison the terminal state for subsequent output.
+- **Unicode box-drawing on Windows:** Windows PowerShell/Terminal may not render `─ │ ┌ ┐` correctly. Test on Windows before shipping.
+- **VT100 incompleteness:** SSH to older Linux systems often hits VT100-only support. Box-drawing characters render as gibberish.
+
+**Prevention:**
+- Test on target terminals: iTerm2, Terminal.app, Windows Terminal, SSH Linux, Alacritty
+- Fall back to ASCII when box-drawing fails: use `+`, `-`, `|` as fallback
+- Always reset attributes after styled text: `\x1b[0m` is your friend
+- Detect terminal capability: Check `TERM` env var (`TERM=xterm-256color` vs `TERM=xterm`)
+
+**Example safe wrapper:**
+```javascript
+const supportsUnicode = process.env.TERM && process.env.TERM.includes('256');
+const border = supportsUnicode ? '─' : '-';
+```
+
+### Layout Breaks on Resize
+
+**Problem:** Fixed-width layouts collapse when terminal resizes. Common in web-based TUI where aspect ratio changes unexpectedly.
+
+**Common failures:**
+- **Hardcoded line widths:** A centered header assuming 80-column width breaks on a 60-column terminal.
+- **Overflow hidden without truncation:** Content that's 100% width + padding exceeds container, causing text to spill or wrap unexpectedly.
+- **Aspect ratio assumptions:** Scanline overlays, CRT curves assume 16:9. On ultra-wide or mobile, artifacts become obvious.
+- **Grid layouts with fixed items:** Using `display: grid` with `grid-template-columns: 100px 200px 100px` fails to adapt to small screens.
+
+**Prevention:**
+- Use viewport-relative units: `vw`, `vh`, or `calc(100% - Xpx)`
+- Implement text truncation with ellipsis: `overflow: hidden; text-overflow: ellipsis; white-space: nowrap;`
+- Test at: 120 columns, 80 columns, 40 columns (mobile), ultra-wide
+- For scanline effects, use percentage-based frequency that scales with viewport
+- Use CSS `@media` or JS `ResizeObserver` to adapt layout dynamically
+
+**Scanline example that fails:**
+```css
+/* ❌ Breaks on narrow screens */
+background: repeating-linear-gradient(0deg, transparent, transparent 20px, black 20px, black 21px);
+```
+
+**Better approach:**
+```css
+/* ✅ Scales with viewport height */
+background: repeating-linear-gradient(0deg, transparent, transparent calc(2% of height), black calc(2% of height), black calc(2% of height + 1px));
+```
+
+### Input Handling Edge Cases
+
+**Problem:** User input isn't just alphanumeric. Real-world input includes multi-byte UTF-8, special keys, paste buffers, and autocomplete.
+
+**Common failures:**
+- **UTF-8 character counting:** JavaScript's `string.length` counts UTF-16 code units, not characters. A 4-byte emoji `🎮` has `length: 2`, breaking cursor positioning and validation.
+- **Paste buffer handling:** Users paste large blocks of text. Input handlers without streaming cause UI to freeze.
+- **Arrow keys vs WASD:** Terminal-based games assume WASD but users expect arrow keys. Missing support = bad UX.
+- **Special keys lost in translation:** Ctrl+C, Ctrl+Z, Tab work differently across platforms. SSH terminals lose some meta-keys.
+- **IME composition:** Input Method Engine (for Chinese, Japanese, Korean) sends partial characters before final composition. Validating on every keystroke breaks IME input.
+
+**Prevention:**
+- Use grapheme-aware libraries: `Intl.Segmenter` (modern), or `graphemesplitter` npm package
+- Implement paste as multi-character stream, not a single event
+- Support both arrow keys AND WASD for navigation
+- Handle IME: validate only on final `compositionend`, not `compositionupdate`
+- Test on macOS (Command key), Windows (Alt), Linux (various WM behavior)
+
+**Correct UTF-8 cursor positioning:**
+```javascript
+// ❌ Wrong: counts UTF-16 code units
+const cursorPos = input.value.length;  // "🎮🎮" = length: 4
+
+// ✅ Correct: counts grapheme clusters
+const segmenter = new Intl.Segmenter();
+const cursorPos = [...segmenter.segment(input.value)].length;  // "🎮🎮" = 2
+```
+
+### Performance Issues
+
+**Problem:** TUI effects (scanlines, glow, flicker) are expensive. Naive implementations cause jank and CPU/battery drain.
+
+**Common failures:**
+- **Continuous redraws:** Updating DOM every frame via JS (not GPU) causes 60+ reflows per second. Leads to choppy animation, 100%+ CPU.
+- **Too many text-shadow layers:** Each `text-shadow: 0 0 5px, 0 0 10px, 0 0 20px, ...` requires a separate GPU pass. 10+ shadows = measurable lag.
+- **Flickering at high frequency:** `setInterval(..., 16ms)` for flicker ties to animation frame time, causing stutter if main thread is busy.
+- **Scanline overlay recompute:** Recalculating `repeating-linear-gradient` on every resize (without debounce) causes jank.
+- **WebGL without throttling:** Full-screen CRT shaders running at 120fps on low-end mobile = instant battery drain.
+
+**Prevention:**
+- Use CSS `@keyframes` for continuous effects (GPU-accelerated)
+- Limit neon glow to 3-4 text-shadow layers; test on mobile
+- Debounce resize handlers: `ResizeObserver` with throttle, or `window.requestAnimationFrame`
+- Use `will-change: transform, filter` sparingly on elements that animate
+- Provide reduced-motion option: `prefers-reduced-motion: reduce`
+- On mobile, detect CPU capacity: throttle effects on low-power devices
+
+**Flicker that performs well:**
+```css
+/* ✅ GPU-accelerated, smooth */
+@keyframes flicker {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.95; }
+}
+.flicker { animation: flicker 3s infinite; }
+```
+
+**Flicker that causes jank:**
+```javascript
+// ❌ Main thread blocked, stutter
+setInterval(() => {
+  element.style.opacity = Math.random() > 0.5 ? 1 : 0.9;
+}, 50);
+```
+
+### Accessibility Gaps
+
+**Problem:** Terminal UIs often ignore accessibility. Screen readers, keyboard navigation, color contrast all suffer.
+
+**Common failures:**
+- **No keyboard navigation:** Clickable elements only respond to mouse. Screen reader users and keyboard-only users are blocked.
+- **Color-only status indicators:** Red text for error, green for success. Colorblind users (8% of males, 0.5% of females) can't distinguish.
+- **Missing ARIA labels:** Screen readers announce "Button" instead of "Execute command". Confusing for blind users.
+- **Fixed-size text:** Neon glow at 48px looks cool but breaks at 14px for visually impaired users. No zoom support = inaccessible.
+- **No focus indicators:** After Tab-navigating to a button, there's no visible focus ring. Users lose their place.
+- **Animated elements without pause:** Flicker and scanlines can trigger photosensitive epilepsy. Missing `prefers-reduced-motion` support = legal/safety risk.
+
+**Prevention:**
+- Implement full keyboard navigation: Tab/Shift+Tab, Enter to activate, Arrow keys for lists
+- Test with screen reader: VoiceOver (macOS), NVDA (Windows), JAWS
+- Add ARIA labels: `aria-label="Start system"`, `aria-describedby="help-text"`
+- Ensure 4.5:1 contrast ratio for text (WCAG AA standard)
+- Provide `prefers-reduced-motion` alternative: disable flicker, scanlines, animations
+- Focus indicators: `:focus { outline: 2px solid #0ff; }` is mandatory
+
+**Accessible neon button:**
+```tsx
+<button
+  aria-label="Execute diagnostic"
+  className="neon-button"
+  onClick={handleClick}
+  onKeyDown={(e) => e.key === 'Enter' && handleClick()}
+>
+  EXECUTE
+</button>
+
+<style>
+  .neon-button:focus {
+    outline: 2px solid #0ff;
+    outline-offset: 2px;
+  }
+  
+  @media (prefers-reduced-motion: reduce) {
+    .neon-button {
+      text-shadow: none; /* Remove glow */
+      animation: none;   /* Remove flicker */
+    }
+  }
+</style>
+```
+
+### Terminal Emulator Differences
+
+**Quick reference for platform-specific behaviors:**
+
+| Emulator | Notable Quirks | Fix |
+|----------|---|---|
+| **iTerm2** (macOS) | Renders all Unicode correctly; true-color support | None needed |
+| **Terminal.app** (macOS) | Limited color palette; older xterm behavior | Test with 256-color mode |
+| **Alacritty** | Ultra-fast; true-color; may not render some Unicode | Works reliably if iTerm2 works |
+| **Windows Terminal** | Supports true-color; WSL integration works well | None needed for modern code |
+| **PowerShell** | Old versions render box-drawing as `?`; use fallback | Check `$PSVersionTable` |
+| **SSH/xterm** | VT100 only; no true-color; no mouse events | Fall back to ASCII + ANSI colors |
+| **Tmux** | Passthrough mode required for true-color: `set -g default-terminal "tmux-256color"` | Configure tmux.conf |
+| **Screen** | Even older terminal support; avoid fancy effects | Use ASCII-only mode |
+
+**Platform detection example:**
+```bash
+if [[ "$TERM" == "xterm" ]]; then
+  # Old terminal: use ASCII
+  BORDER="+"
+  COLORS="ANSI"
+elif [[ "$TERM" == *"256color"* ]]; then
+  # Modern terminal: use box-drawing + 256 colors
+  BORDER="─"
+  COLORS="256"
+else
+  # Unknown: default to safe
+  BORDER="+"
+  COLORS="ANSI"
+fi
+```
+
+### When CRT Effects Backfire
+
+**Problem:** Scanlines, glow, and distortion look cool in mockups but cause problems in practice.
+
+**Common failures:**
+- **Scanlines reduce readability:** Fine horizontal lines over text make it harder to read, especially on mobile or at distance. People with low vision can't read it.
+- **Glow hides text:** Heavy neon glow (`text-shadow` with 10+ layers) blurs text edges, reducing legibility.
+- **Barrel distortion breaks alignment:** CRT curvature looks authentic but makes content appear misaligned. Users think UI is broken.
+- **Flicker induces motion sickness:** Subtle flicker causes nausea in some users. Photosensitive epilepsy is a real safety concern.
+
+**Prevention:**
+- Use subtle scanlines: 10-15% opacity, visible but not interfering with text
+- Limit glow intensity: if glow radius > 20px, text becomes unreadable
+- Distortion is decorative only: never use it for critical layout
+- Always provide `prefers-reduced-motion` escape hatch
+- Test with actual users: "Can you read this comfortably?"
+
+---
+
 ## Resources
 
 ### Libraries
