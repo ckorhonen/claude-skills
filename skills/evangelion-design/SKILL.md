@@ -61,7 +61,117 @@ Choose the emotional function before choosing components.
 Read `references/style-guide.md` for palette, type, layout, motion, and implementation tokens.
 Read `references/source-signals.md` when you want the rationale behind the look and the analyzed source cues.
 
-## Guardrails
+## Common Pitfalls
+
+The most frequent failure modes when applying Evangelion design language:
+
+### Too Literal: Copying Frames Instead of Extracting Principles
+
+**The trap:** Taking a screenshot from the anime and translating it directly to your product — replicating the AT field borders, the exact LCL tank layout, or the bridge console panel-for-panel.
+
+**Why it fails:** 
+- Licensed assets and direct copies undermine originality
+- Anime compositions are designed for 16:9 narrative pacing, not responsive product interaction
+- A slavish copy reads as theme-park superficiality, not disciplined design language
+
+**What works instead:**
+- Extract the *principle* (e.g., "layered transparent rings showing state") not the shape
+- Adapt the scale and rhythm to your product's actual data density and user workflow
+- Let your interface solve your problem first; the Evangelion language is the *tone*, not the template
+
+**Example:** NERV uses nested ring analyzers for multi-layer status. A real product using this principle would adapt it to show network latency layers, cache hierarchies, or concurrent request states — the *structure* echoes, but the content is native.
+
+---
+
+### Information Overload Without Hierarchy
+
+**The trap:** Packing every data point, every label, and every decorative trace onto the same black field because "Evangelion is dense."
+
+**Why it fails:**
+- Evangelion's density serves hierarchy: critical state signals are *larger and hotter*, secondary telemetry is small and cool-toned
+- Without a clear focal point, the user scans randomly and misses actionable data
+- Overloading opacity, glow, and animation on every element creates visual noise, not clarity
+
+**What works instead:**
+- Establish a clear signal hierarchy: *What does the user need to act on right now?* Make that hero-sized and hot-colored
+- Relegate diagnostic telemetry, trend traces, and background metrics to smaller, cooler, lower-contrast zones
+- Use negative space aggressively — empty black areas around the hero signal *create tension* and focus
+
+**Example:** A sync monitor screen shows three LCDs: current sync% in bold amber, trend trace in dim green below, and historical peak in micro-text at the edge. The eye goes to sync% first. A common mistake would put all three at the same size, burying the critical metric.
+
+---
+
+### Missing Context Cues: Users Get Lost in Complexity
+
+**The trap:** Building a beautiful command-center dashboard but omitting visual anchors — labels, section dividers, or state markers that let users navigate the complexity.
+
+**Why it fails:**
+- Evangelion UI is dense *and* navigable: the AT field outline tells you "this is a status zone," the title card reads top-left, the capsule ladder steps left-to-right
+- Without these cues, a user loses spatial awareness and can't find what they're looking for in a glance
+- Dense without context becomes overwhelming rather than reassuring
+
+**What works instead:**
+- Use frame lines, notched edges, and section labels to partition the screen into scannable zones
+- Place consistent reference labels and directional markers so the user knows "I am looking at reactor diagnostics, not personnel sync"
+- Let the geometric structure *teach* the user where to look and how to move through the interface
+
+**Example:** A diagnostic triptych has a dominant central analyzer flanked by two status bays. Label the center "CORE THERMAL" and the sides with their own title. Without those labels, the user doesn't know if they're looking at reactor status or personnel data.
+
+---
+
+### Style Over Function: Looks Cool, But Unusable
+
+**The trap:** Prioritizing visual drama (glowing scanlines, sweeping animations, fog effects) over legibility and interaction feedback.
+
+**Why it fails:**
+- A gorgeous interface that doesn't clearly show what's happening or how to interact is frustrating, not impressive
+- Evangelion's motion serves function: sweep animations reveal state transitions, pulsing alerts mark danger, trace plotting shows time-series data. It's always *doing* something
+- Sacrificing click targets, affordances, or state feedback for aesthetic effect breaks usability
+
+**What works instead:**
+- Every animation should communicate state change or guide the user's attention
+- Every element should have a clear interactive affordance if it's meant to be clicked, swiped, or expanded
+- Aesthetic choices (glow, grain, color) should enhance, not obscure, primary actions and critical data
+
+**Example:** A countdown timer animated with a smooth tween from 10 to 0 looks nice but doesn't communicate urgency. The *same timer* with a pulsing red background, bold serif numerals, and a sudden jump when crossing 2 minutes left communicates danger and prompts action.
+
+---
+
+### Ignoring Accessibility: Color and Contrast Issues
+
+**The trap:** Using red-on-dark or red-green combinations as primary signals, assuming low contrast works because Evangelion looks "dark and moody."
+
+**Why it fails:**
+- Red and green together are indistinguishable to ~8% of viewers (color blindness)
+- Low contrast fails WCAG standards and becomes unreadable on mobile or in bright light
+- Evangelion does use red and green, but always with additional *shape, position, or label cues* to distinguish meaning
+- Inaccessible designs exclude users and open you to compliance risk
+
+**What works instead:**
+- Use color as a support signal, not the primary identifier. Always add label text, icon, or shape distinction
+- Test your palette against color-blindness simulators (Coblis, Contrast Ratio) before shipping
+- Ensure text and interactive elements meet WCAG AA contrast (4.5:1 for body text, 3:1 for large text)
+- Leverage Evangelion's geometric language: if red means "alert," add an exclamation icon or border treatment so deuteranopia viewers still get the signal
+
+**Example:** A status indicator that's just a red circle fails for color-blind users. The *same indicator* as a red circle *plus* a warning symbol *plus* the label "ALERT" works for all viewers and reads as more authentic to Evangelion's label-heavy style.
+
+---
+
+### NERV UI Works; Generic Sci-Fi Doesn't
+
+The difference between authentic Evangelion language and generic neon cyberpunk often comes down to *discipline and specificity*:
+
+| NERV UI (Works) | Generic Sci-Fi (Fails) |
+|---|---|
+| Flat black, amber, and signal green | Rainbow gradients, purple/cyan neon |
+| Tall condensed sans labels with explicit state verbs | Vague floating text and decorative symbols |
+| Modular repeated arrays (sync ladder, capsule racks) | Every element unique and ornate |
+| Motion reveals state: sweep plots, panel swaps, alert pulses | Motion for motion's sake: constantly drifting glows |
+| Negative space creates tension and focus | Every pixel filled with texture and glow |
+| Accessible hierarchy and geometric guides | Dense chaos that looks impressive but isn't navigable |
+| Typography and shape do the heavy lifting; glow is restrained | Relies on glow and blur to hide weak foundational design |
+
+The key: Evangelion design is *severe* and *specific* about its choices. It's not "make it look sci-fi;" it's "make every element earn its place."
 
 - Do not default to purple gradients, glassmorphism, soft blur, or playful spring motion.
 - Do not make every surface glow. Most of the screen should feel matte, dark, and controlled.
