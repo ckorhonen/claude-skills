@@ -255,6 +255,265 @@ If you catch yourself thinking:
 | "I see the problem, let me fix it" | Seeing symptoms ≠ understanding root cause. |
 | "One more fix attempt" (after 2+ failures) | 3+ failures = architectural problem. Question pattern, don't fix again. |
 
+## Common Pitfalls
+
+These are anti-patterns observed in debugging practice. Recognize them and correct course immediately.
+
+### 1. Jumping to Solutions Before Reproducing (Premature Fixes)
+
+**Anti-pattern:**
+```
+Error log shows "timeout" → assume network issue → add retry logic
+(But you never actually reproduced the timeout)
+```
+
+**Problem:**
+- Fix addresses a symptom you haven't verified
+- Real issue remains unfixed, masked by the "fix"
+- When symptom recurs, you waste time debugging your own patch
+
+**How to avoid:**
+- **Phase 1 requirement:** Can you trigger the bug reliably with known steps?
+- Document exact reproduction: "Run `npm test` with X set to Y" → bug happens
+- If you can't reproduce it, you can't verify your fix works
+- Reproducibility is non-negotiable — gather more data until you can trigger it
+
+**Recovery:**
+- Stop. Return to Phase 1.
+- Find exact reproduction steps.
+- THEN move to Phase 2.
+
+---
+
+### 2. Changing Multiple Things at Once (Can't Isolate Root Cause)
+
+**Anti-pattern:**
+```
+Change 3 things:
+  - Update dependency version
+  - Refactor retry logic
+  - Add fallback handler
+Run tests → passes
+```
+
+**Problem:**
+- Which change fixed it? Unknown.
+- If one change introduces a subtle bug, you won't catch it for months
+- Future bugs in that code path will be doubly confusing
+
+**How to avoid:**
+- **Phase 3 requirement:** "Test minimally. Make the SMALLEST possible change."
+- ONE variable at a time
+- Test after EACH change
+- If you can't isolate what fixed it, the fix is incomplete knowledge
+
+**Recovery:**
+- Revert all changes. Start over.
+- Change ONE thing. Test.
+- Document: "This change alone fixed it because [reason]"
+- Repeat for next hypothesis.
+
+---
+
+### 3. Assuming Bug Is in Recent Changes (Ignoring Environment/Data)
+
+**Anti-pattern:**
+```
+Feature shipped 3 days ago → bug happened today → bug must be in that feature
+(But you didn't verify the feature code against current data/environment)
+```
+
+**Problem:**
+- Recent code LOOKS suspicious but environment changes are hard to see
+- You waste days debugging code that's actually fine
+- Real cause: data corruption, environment misconfiguration, dependency update
+
+**How to avoid:**
+- **Phase 1 requirement:** "Check Recent Changes" includes:
+  - Git diffs in code? Yes.
+  - Dependency updates? Yes.
+  - Environment changes? Yes.
+  - Data migrations? Yes.
+  - Config changes? Yes.
+- Test hypothesis: revert recent code change, see if bug persists
+- If bug still happens without recent changes, it's environmental
+- For multi-component systems, use diagnostic instrumentation (see Phase 1 Step 4)
+
+**Recovery:**
+- List ALL changes in last week: code, dependencies, config, environment, data
+- Systematically rule out environment/data causes
+- Only then focus on code
+
+---
+
+### 4. Not Documenting Reproduction Steps (Can't Verify Fix)
+
+**Anti-pattern:**
+```
+"Fixed the bug" (but didn't write down how to trigger it)
+Weeks later: "Wait, does this still happen? I don't remember how to trigger it"
+```
+
+**Problem:**
+- You can't verify your fix actually works
+- You can't tell colleagues how to test it
+- You can't catch regression
+
+**How to avoid:**
+- **Phase 1 requirement:** "Reproduce Consistently"
+  - Write down exact steps
+  - Format: "To reproduce: [step 1], [step 2], [step 3]"
+- Before moving to Phase 2, add these steps as a comment in your PR/issue
+- After implementing fix, re-run exact steps to verify
+- Convert reproduction steps to a test case (Phase 4, Step 1)
+
+**Recovery:**
+- Document reproduction steps NOW
+- Don't claim fix is done until you've re-run exact steps
+- If you can't reproduce it anymore, reproduction steps proved the fix works
+
+---
+
+### 5. Debugging Without Logs/Observability (Flying Blind)
+
+**Anti-pattern:**
+```
+Error happens in production
+You: "Probably a race condition?"
+You don't have logs showing what was happening at that moment
+You guess at fixes for 3 hours
+```
+
+**Problem:**
+- You're making decisions without evidence
+- Guessing at fixes creates new bugs
+- Same error will recur because you never understood cause
+
+**How to avoid:**
+- **Phase 1 requirement:** "Gather Evidence in Multi-Component Systems"
+- Before debugging, ask: "What logs do we have?"
+- If missing: add temporary logging, reproduce locally
+- Don't propose fixes without evidence of what's happening
+- For production issues: capture logs/metrics at time of failure
+
+**Specific strategies:**
+```bash
+# Reproduce with logging
+DEBUG=* npm test           # Enable all logs
+strace node app.js         # System call tracing
+tcpdump -i any -w dump     # Network tracing
+```
+
+**Recovery:**
+- Pause. Add logging for key decision points.
+- Reproduce the issue with enhanced logging.
+- Now you have evidence to form hypothesis.
+- THEN propose fix.
+
+---
+
+### 6. Testing Without a Failing Test Case (Verification Theater)
+
+**Anti-pattern:**
+```
+Implement fix
+Run manual test: "Looks good"
+Commit and push
+(No automated test proving bug existed)
+```
+
+**Problem:**
+- You "fixed" something, but you never proved it was broken
+- Regression testing later shows the bug still happens
+- You can't distinguish between "I fixed it" and "I got lucky"
+
+**How to avoid:**
+- **Phase 4 requirement:** "Create Failing Test Case"
+  - Test MUST fail before fix
+  - Test MUST pass after fix
+  - Test proves bug existed, fix eliminates bug
+- Don't implement fix without a failing test
+- Automated test (unit test, integration test, one-off script) > manual verification
+
+**Recovery:**
+- Revert your fix
+- Write test that reproduces the bug
+- Verify test fails
+- Implement fix
+- Verify test passes
+
+---
+
+### 7. Not Isolating the Failing Component (Blame Everything)
+
+**Anti-pattern:**
+```
+Database slow? Maybe it's the query. Maybe it's the network. Maybe it's CPU.
+Let me add caching, fix indexes, reduce batch size, and upgrade servers.
+```
+
+**Problem:**
+- You waste resources fixing things that aren't broken
+- You never understand the actual bottleneck
+- Future optimization attempts fail because you're not sure what to optimize
+
+**How to avoid:**
+- **Phase 1 requirement:** "Gather Evidence in Multi-Component Systems"
+  - For each component boundary, log data entering and exiting
+  - Identify WHICH component is slow/failing
+  - Focus investigation on that one component
+  - Don't optimize 5 things, optimize the bottleneck
+
+**Example:**
+```bash
+# API slow. Which part?
+time curl /api/endpoint              # Total time
+# Add logging to API entry point
+# Add logging before DB query
+# Add logging after DB returns
+# Add logging before response
+
+# Now you know: API fast (10ms), DB query slow (2s) → focus on DB
+```
+
+**Recovery:**
+- Use diagnostic instrumentation to identify which component is actually failing
+- Don't propose fixes until you've isolated the specific component
+
+---
+
+### 8. Assuming Your Fix Is Complete (Missing Edge Cases)
+
+**Anti-pattern:**
+```
+Test case passes for happy path
+Deploy without testing error cases
+(Bug appears 2 weeks later under edge condition you didn't think to test)
+```
+
+**Problem:**
+- Fix addresses one scenario but breaks others
+- Edge cases are where 80% of bugs hide
+
+**How to avoid:**
+- **Phase 4 requirement:** "Verify Fix"
+  - Test passing case
+  - Test error cases
+  - Test boundary conditions
+  - Test with invalid/empty/extreme data
+  - Test interaction with other components
+- Comprehensive test coverage BEFORE deploying
+- Regression tests for each bug you've fixed
+
+**Recovery:**
+- Add edge case tests
+- Re-run comprehensive test suite
+- Don't declare fix done until all cases pass
+
+---
+
+These pitfalls are patterns, not one-off mistakes. When you catch yourself in one, stop and realign to the process.
+
 ## Quick Reference
 
 | Phase | Key Activities | Success Criteria |
