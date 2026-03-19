@@ -222,6 +222,258 @@ agent-browser get text @e1 --json
 agent-browser get url --json | jq -r '.url'
 ```
 
+## Common Pitfalls
+
+This section covers frequent failure modes and how to debug them. Each pitfall includes the symptom you'll see, the underlying cause, and the fix.
+
+### Browser not found
+**Symptom:** `Error: Browser executable not found at default path` or `agent-browser: command not found`
+
+**Cause:** Chromium isn't installed, or agent-browser CLI isn't on PATH
+
+**Fix:**
+```bash
+# Install Chromium
+agent-browser install
+
+# For Linux, install system dependencies
+agent-browser install --with-deps
+
+# Verify installation
+agent-browser --version
+```
+
+### Element ref becomes stale after page change
+**Symptom:** `Error: Element @e2 not found` even though you just used it, or clicks fail silently
+
+**Cause:** Element refs change when the DOM updates (navigation, page reload, dynamic content). Refs are only valid for the current DOM snapshot.
+
+**Fix:**
+```bash
+# Always re-snapshot after major page changes
+agent-browser click @e1  # Click submit
+agent-browser wait 2000  # Wait for navigation
+agent-browser snapshot -i --json  # Get fresh refs
+agent-browser click @e1  # Use new ref (was @e1 before? Verify!)
+```
+
+**Prevention:** In scripts, capture fresh refs after each navigation or dynamic load.
+
+### Session conflicts and port binding
+**Symptom:** `Error: Session "default" already in use` or `Port 9222 already in use`
+
+**Cause:** Browser session is still running from a previous command or crashed script, preventing a new session from starting
+
+**Fix:**
+```bash
+# List active sessions
+agent-browser session list
+
+# Kill a specific session
+agent-browser session kill my-session
+
+# Use unique session names to avoid conflicts
+agent-browser --session upload-$(date +%s) open https://app.com
+
+# Or set environment variable once
+export AGENT_BROWSER_SESSION=task-$(date +%s)
+agent-browser open https://example.com
+agent-browser close
+```
+
+### Clicks and interactions don't work on hidden elements
+**Symptom:** `agent-browser click @e5` succeeds but nothing happens, or element is invisible in screenshot
+
+**Cause:** Element is outside viewport, hidden by CSS (`display: none`, `visibility: hidden`), or covered by another element. Accessibility tree may show it, but browser can't interact with it.
+
+**Fix:**
+```bash
+# Check visibility before interaction
+agent-browser is visible @e5
+
+# Scroll to make element visible
+agent-browser scroll down 500
+
+# Take screenshot to visually verify
+agent-browser screenshot current-state.png
+
+# Try parent element if child is deeply nested
+agent-browser click @e4  # Click parent button instead
+```
+
+**Prevention:** Always take screenshots before and after critical interactions to verify visual state.
+
+### Timeout waiting for navigation or element
+**Symptom:** `Error: Timeout waiting for element` or script hangs indefinitely after clicking a link
+
+**Cause:** 
+- Element doesn't exist or appears after longer than expected delay
+- Navigation is stuck (network error, page not loading)
+- Element selector is wrong
+
+**Fix:**
+```bash
+# Explicit wait before checking for element
+agent-browser wait 2000  # Wait 2 seconds
+agent-browser snapshot -i --json  # Check if element exists
+
+# Wait for specific element to appear
+agent-browser wait @e3
+
+# Increase timeout with explicit waits in script
+agent-browser click @submit
+sleep 3  # Shell script sleep
+agent-browser snapshot -i
+
+# Check page title to verify navigation worked
+agent-browser get title
+```
+
+**Prevention:** Add explicit `wait` commands after form submissions or link clicks that cause navigation.
+
+### Snapshot is empty or missing expected elements
+**Symptom:** `agent-browser snapshot -i --json` returns `[]` or very few elements, but you see them visually in screenshot
+
+**Cause:** 
+- Page content is rendered by JavaScript (React, Vue, etc.) that hasn't completed
+- Elements lack accessible labels or roles
+- `-i` flag filters too aggressively
+
+**Fix:**
+```bash
+# Wait for content to render
+agent-browser wait 2000
+agent-browser snapshot -i
+
+# Remove interactive-only filter to see all elements
+agent-browser snapshot -c  # Compact but includes all elements
+
+# Increase tree depth to find nested elements
+agent-browser snapshot -d 5
+
+# Use full snapshot to diagnose
+agent-browser snapshot --json | jq . | less
+
+# Check page title to verify page loaded
+agent-browser get title
+```
+
+**Prevention:** Add wait delays after opening pages with heavy JavaScript rendering.
+
+### Form fill doesn't work or text is partial
+**Symptom:** Text appears to be cut off, only first few characters typed, or field stays empty
+
+**Cause:** 
+- Field wasn't focused before typing (race condition)
+- Field has input validation or character limit
+- JavaScript event handlers expect specific typing speed or blur event
+
+**Fix:**
+```bash
+# Always focus explicitly before filling
+agent-browser focus @e2
+agent-browser wait 500  # Let field settle
+agent-browser fill @e2 "complete@example.com"
+
+# For fields with slow JS event handling
+agent-browser type @e2 "first part"
+agent-browser wait 500
+agent-browser type @e2 "second part"
+
+# Verify what was actually entered
+agent-browser get value @e2
+```
+
+**Prevention:** After any form fill, immediately verify the value was entered correctly with `get value`.
+
+### Network requests fail or external API timeouts
+**Symptom:** Page loads but data doesn't populate, or integration tests fail when hitting real APIs
+
+**Cause:** 
+- External API is slow or unreachable
+- CORS errors (browser blocks requests to different domain)
+- Missing authentication headers
+- Network is isolated (testing environment)
+
+**Fix:**
+```bash
+# Set custom headers for auth
+agent-browser --headers '{"Authorization": "Bearer token123"}' open https://api.example.com
+
+# Mock API responses instead
+agent-browser network route "**/api/data" --body '{"result":"mocked"}'
+
+# Add explicit wait for API response
+agent-browser wait 3000  # Give API time to respond
+agent-browser snapshot -i
+
+# Fallback: Use `--headed` to see error messages
+agent-browser --headed open https://app.com
+agent-browser click @e1  # See browser console errors
+```
+
+**Prevention:** For testing, use `network route` to mock external APIs. For production, verify connectivity before running automation.
+
+### Browser crashes or becomes unresponsive
+**Symptom:** `agent-browser` command hangs or process crashes with segmentation fault; Chrome window closes unexpectedly
+
+**Cause:**
+- Out of memory (too many long-running sessions or screenshots)
+- Invalid CDP connection
+- Rare Chromium/Playwright crash
+- Insufficient system resources
+
+**Fix:**
+```bash
+# Restart with fresh session
+agent-browser session kill all-sessions  # Or specify a name
+
+# Use lightweight mode with limited resources
+agent-browser --session lite open https://minimal-site.com
+
+# Reduce screenshot frequency
+# Instead of: agent-browser screenshot after every click
+# Do: agent-browser screenshot only on failure
+
+# Check system resources
+top -n 1 | head -20
+
+# Run with --debug for crash diagnostics
+agent-browser --debug open https://example.com 2>&1 | tail -50
+```
+
+**Prevention:** 
+- Close sessions explicitly: `agent-browser close`
+- Use unique session names for long-lived tasks
+- Monitor memory in long automation scripts
+
+### Element ref is ambiguous (@e1 appears for multiple elements)
+**Symptom:** Multiple elements resolve to the same @e number, clicking @e1 affects the wrong element
+
+**Cause:** Accessibility tree groups similar elements (buttons, links) and agent-browser assigns refs based on order, not uniqueness
+
+**Fix:**
+```bash
+# Use full snapshot to understand structure
+agent-browser snapshot -d 3 --json > structure.json
+cat structure.json | jq .  # Examine hierarchy
+
+# Click using find by text if available
+agent-browser find text "Specific Button Text" click
+
+# Use CSS selector if accessibility tree isn't clear
+agent-browser find selector "button.submit-btn" click
+
+# Take screenshot and count visually
+agent-browser screenshot debug.png
+# Then manually map which @eN corresponds to which button
+
+# Use context to disambiguate
+agent-browser get text @e1  # Check what @e1 actually is
+```
+
+**Prevention:** Always verify element identity by checking its text or taking screenshots before critical interactions.
+
 ## Advanced Features
 
 ### CDP Connection
@@ -367,45 +619,6 @@ agent-browser --session $SESSION close
 | `AGENT_BROWSER_SESSION` | Default session name |
 | `AGENT_BROWSER_EXECUTABLE_PATH` | Custom browser path |
 | `AGENT_BROWSER_STREAM_PORT` | WebSocket streaming port |
-
-## Troubleshooting
-
-### "Browser not found"
-```bash
-# Install Chromium
-agent-browser install
-```
-
-### Element ref not found
-```bash
-# Refresh snapshot after page changes
-agent-browser snapshot -i
-
-# Check if element is visible
-agent-browser is visible @e1
-```
-
-### Session conflicts
-```bash
-# List active sessions
-agent-browser session list
-
-# Use unique session names
-agent-browser --session unique-$(date +%s) open https://example.com
-```
-
-### Headless issues
-```bash
-# Run with visible browser for debugging
-agent-browser --headed open https://example.com
-```
-
-### Timeout waiting for element
-```bash
-# Explicit wait before interaction
-agent-browser wait 2000
-agent-browser wait @e1  # Wait for element to appear
-```
 
 ## Best Practices
 
