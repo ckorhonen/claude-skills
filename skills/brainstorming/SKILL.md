@@ -1,6 +1,6 @@
 ---
 name: brainstorming
-description: "Use before any creative work - creating features, building components, adding functionality, or modifying behavior. Explores user intent, requirements and design before implementation to prevent costly rework and misaligned assumptions."
+description: "Explore user intent, requirements and design before implementation through structured dialogue and design proposals. Use when asked to: create features, build components, add functionality, modify behavior, plan projects, or when user says 'help me design X', 'what should we build', 'let's brainstorm', or starts describing a new feature without a design."
 ---
 
 # Brainstorming Ideas Into Designs
@@ -100,6 +100,106 @@ digraph brainstorming {
 - **Explore alternatives** - Always propose 2-3 approaches before settling
 - **Incremental validation** - Present design, get approval before moving on
 - **Be flexible** - Go back and clarify when something doesn't make sense
+
+## Examples
+
+### Example 1: New Feature Request
+
+**User:** "Let's add dark mode to the app"
+
+**Brainstorming workflow:**
+1. Check current theme implementation
+2. Ask: "Should dark mode be automatic (system preference), manual toggle, or both?"
+3. Propose 3 approaches: CSS variables, Tailwind dark: classes, or theme provider
+4. Present design sections: color palette, component updates, storage strategy
+5. Get approval on each section
+6. Write design doc to `docs/plans/2026-03-20-dark-mode-design.md`
+7. Invoke writing-plans skill
+
+**Expected output:** Validated design document + transition to planning
+
+### Example 2: Utility Function
+
+**User:** "I need a function to format phone numbers"
+
+**Brainstorming workflow:**
+1. Ask: "What formats should it support? (US only, international, etc.)"
+2. Ask: "Should it validate or just format?"
+3. Propose approaches: regex-based, library (libphonenumber), or simple formatter
+4. Present design: function signature, edge cases, error handling
+5. Get approval
+6. Write brief design doc
+7. Invoke writing-plans
+
+**Expected output:** Even "simple" utilities get a design first
+
+### Example 3: Architectural Change
+
+**User:** "We should migrate from REST to GraphQL"
+
+**Brainstorming workflow:**
+1. Review current API structure and client usage
+2. Ask: "What's driving this? Performance, developer experience, or specific features?"
+3. Ask: "Is this a gradual migration or big-bang?"
+4. Propose 3 approaches: parallel APIs, GraphQL wrapper over REST, full rewrite
+5. Present design: schema design, migration strategy, backward compatibility
+6. Iteratively present sections, getting approval
+7. Write comprehensive design doc
+8. Invoke writing-plans
+
+**Expected output:** Multi-phase design with migration strategy
+
+## Troubleshooting
+
+### Issue: User Keeps Asking "Just Build It"
+
+**Symptoms:** User wants to skip brainstorming and go straight to code
+
+**Cause:** Perceives design phase as overhead for "simple" tasks
+
+**Solution:**
+1. Acknowledge the urgency: "I understand you want to move fast"
+2. Explain the risk: "Without design, we might build the wrong thing"  
+3. Propose time-boxed design: "Let me ask 2 quick questions to confirm the approach"
+4. If user still insists, present a minimal design: "Here's what I'm planning to build..."
+5. Get explicit approval before proceeding
+
+### Issue: Design Becomes Implementation Plan
+
+**Symptoms:** Design document includes code snippets, file structures, or step-by-step instructions
+
+**Cause:** Confusing design (what/why) with planning (how/when)
+
+**Solution:**
+1. Keep design focused on: architecture, components, data flow, trade-offs
+2. Defer implementation details to writing-plans skill
+3. If you catch yourself writing "Step 1: Create file X", stop and move to planning phase
+
+### Issue: User Changes Mind Mid-Implementation
+
+**Symptoms:** After starting work, user requests different behavior or approach
+
+**Cause:** Design wasn't concrete enough or assumptions weren't validated
+
+**Solution:**
+1. Stop implementation immediately
+2. Return to brainstorming mode
+3. Ask clarifying questions about the new requirements
+4. Present revised design
+5. Get explicit approval before resuming implementation
+6. Update design doc with new decisions
+
+### Issue: Stuck in Endless Design Iteration
+
+**Symptoms:** User keeps asking for more options or isn't satisfied with any design
+
+**Cause:** Unclear success criteria or user isn't sure what they want
+
+**Solution:**
+1. Step back and ask: "What would the ideal outcome look like?"
+2. Propose a minimal viable version: "What's the smallest thing we could build that would be useful?"
+3. Suggest prototyping: "Should we build a quick prototype to explore this?"
+4. If still stuck, propose time-boxing: "Let's go with Option A and revisit if it doesn't work"
 
 ## Common Pitfalls
 
