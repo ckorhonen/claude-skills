@@ -620,6 +620,377 @@ agent-browser --session $SESSION close
 | `AGENT_BROWSER_EXECUTABLE_PATH` | Custom browser path |
 | `AGENT_BROWSER_STREAM_PORT` | WebSocket streaming port |
 
+## Examples
+
+### Example 1: Simple Web Scraping
+
+**User request:**
+```
+"Scrape the product title and price from https://example.com/product/123"
+```
+
+**Workflow:**
+```bash
+# 1. Navigate to page
+agent-browser open https://example.com/product/123
+
+# 2. Get accessibility snapshot
+agent-browser snapshot -i --json > page.json
+
+# 3. Identify elements (example output):
+# @e5 heading "Premium Widget Pro"
+# @e12 text "$49.99"
+
+# 4. Extract data
+agent-browser get text @e5 --json  # Returns: {"text": "Premium Widget Pro"}
+agent-browser get text @e12 --json  # Returns: {"text": "$49.99"}
+```
+
+**Expected output:**
+```json
+{
+  "title": "Premium Widget Pro",
+  "price": "$49.99"
+}
+```
+
+**Time:** 2-3 seconds
+
+---
+
+### Example 2: Form Submission with Verification
+
+**User request:**
+```
+"Fill out the contact form at https://example.com/contact and verify submission"
+```
+
+**Workflow:**
+```bash
+# 1. Navigate and snapshot
+agent-browser open https://example.com/contact
+agent-browser snapshot -i
+
+# Example snapshot output:
+# @e1 textbox "Name"
+# @e2 textbox "Email"
+# @e3 textbox "Message"
+# @e4 button "Send"
+
+# 2. Fill form fields
+agent-browser fill @e1 "John Doe"
+agent-browser fill @e2 "john@example.com"
+agent-browser fill @e3 "I have a question about your product"
+
+# 3. Submit
+agent-browser click @e4
+
+# 4. Wait for response
+agent-browser wait 2000
+
+# 5. Verify success
+agent-browser snapshot -i | grep "Thank you"
+# Or take screenshot for manual verification
+agent-browser screenshot success.png
+```
+
+**Expected outcome:**
+- Form submitted successfully
+- Page shows confirmation message
+- Screenshot saved showing success state
+
+**Time:** 4-6 seconds
+
+---
+
+### Example 3: Multi-Page Workflow with Session
+
+**User request:**
+```
+"Add item to cart, proceed to checkout, and fill shipping info"
+```
+
+**Workflow:**
+```bash
+# Use session for state persistence across commands
+SESSION="checkout-flow-$(date +%s)"
+
+# 1. Add to cart
+agent-browser --session $SESSION open https://shop.example.com/product/widget
+agent-browser --session $SESSION snapshot -i | grep "Add to Cart"
+agent-browser --session $SESSION click @add-to-cart  # Assuming @add-to-cart ref found
+agent-browser --session $SESSION wait 1000  # Wait for cart update
+
+# 2. Go to checkout
+agent-browser --session $SESSION open https://shop.example.com/checkout
+agent-browser --session $SESSION snapshot -i
+
+# 3. Fill shipping form (refs from snapshot)
+agent-browser --session $SESSION fill @shipping-name "Jane Smith"
+agent-browser --session $SESSION fill @shipping-address "456 Oak Ave"
+agent-browser --session $SESSION fill @shipping-city "Portland"
+agent-browser --session $SESSION select @shipping-state "OR"
+agent-browser --session $SESSION fill @shipping-zip "97201"
+
+# 4. Take screenshot before submission
+agent-browser --session $SESSION screenshot checkout-filled.png
+
+# 5. Cleanup
+agent-browser --session $SESSION close
+```
+
+**Expected outcome:**
+- Item added to cart successfully
+- Checkout form filled with shipping details
+- Screenshot saved showing completed form
+- Session cleaned up
+
+**Time:** 8-12 seconds
+
+---
+
+### Example 4: Login and Data Extraction
+
+**User request:**
+```
+"Log into dashboard, navigate to reports, and extract table data"
+```
+
+**Workflow:**
+```bash
+SESSION="dashboard-scrape"
+
+# 1. Login
+agent-browser --session $SESSION open https://app.example.com/login
+agent-browser --session $SESSION snapshot -i
+
+# Fill login form
+agent-browser --session $SESSION fill @email "user@example.com"
+agent-browser --session $SESSION fill @password "secretpass"
+agent-browser --session $SESSION click @submit
+agent-browser --session $SESSION wait 2000
+
+# 2. Navigate to reports
+agent-browser --session $SESSION open https://app.example.com/reports
+agent-browser --session $SESSION wait 1000
+
+# 3. Extract table data
+agent-browser --session $SESSION snapshot --json > reports.json
+
+# Parse JSON to extract table rows
+# @e20 table
+#   @e21 row "Q1 2024, $50,000, 15% growth"
+#   @e22 row "Q2 2024, $62,000, 24% growth"
+
+agent-browser --session $SESSION get text @e20 --json
+
+# 4. Cleanup
+agent-browser --session $SESSION close
+```
+
+**Expected output:**
+```json
+{
+  "reports": [
+    {"quarter": "Q1 2024", "revenue": "$50,000", "growth": "15%"},
+    {"quarter": "Q2 2024", "revenue": "$62,000", "growth": "24%"}
+  ]
+}
+```
+
+**Time:** 6-10 seconds
+
+---
+
+## Troubleshooting
+
+### Issue: Element Reference Not Found
+
+**Symptoms:**
+```
+Error: Element @e5 not found
+```
+
+**Cause:** Element ref changed after page update or snapshot was stale
+
+**Solution:**
+```bash
+# 1. Get fresh snapshot
+agent-browser snapshot -i
+
+# 2. Verify element ref in output
+# Look for expected element in snapshot output
+
+# 3. If element doesn't appear, try without -i flag
+agent-browser snapshot  # Shows all elements, not just interactive
+
+# 4. If still missing, check if page loaded completely
+agent-browser wait 2000  # Wait for page to settle
+agent-browser snapshot -i
+```
+
+---
+
+### Issue: Timeout Waiting for Navigation
+
+**Symptoms:**
+```
+Error: Navigation timeout after 30000ms
+```
+
+**Cause:** Page takes too long to load or network issues
+
+**Solution:**
+```bash
+# 1. Check if page is accessible
+agent-browser --headed open https://example.com  # Visual debugging
+
+# 2. Increase wait time after navigation
+agent-browser open https://slow-site.com
+agent-browser wait 5000  # Wait 5 seconds
+
+# 3. Check network requests
+agent-browser network requests  # See what's loading
+
+# 4. Use CDP connection for better control
+agent-browser --cdp 9222 open https://example.com
+```
+
+---
+
+### Issue: Click Not Working
+
+**Symptoms:** Element click command runs but nothing happens
+
+**Cause:** Element not visible, disabled, or covered by another element
+
+**Solution:**
+```bash
+# 1. Check if element is visible
+agent-browser is visible @e3
+# Returns: true/false
+
+# 2. Check if element is enabled
+agent-browser is enabled @e3
+
+# 3. Try scrolling to element first
+agent-browser scroll down 500
+agent-browser wait 500
+agent-browser click @e3
+
+# 4. Take screenshot to see page state
+agent-browser screenshot debug.png
+
+# 5. Try double-click instead
+agent-browser dblclick @e3
+```
+
+---
+
+### Issue: Form Input Not Registering
+
+**Symptoms:** Text typed but form field remains empty
+
+**Cause:** JavaScript framework requires special events or delays
+
+**Solution:**
+```bash
+# 1. Focus element first
+agent-browser focus @e2
+agent-browser wait 200
+
+# 2. Use fill instead of type (clears first)
+agent-browser fill @e2 "text content"
+
+# 3. Add delays between keystrokes
+agent-browser type @e2 "slow"
+agent-browser wait 100
+
+# 4. Try pressing Tab after filling to trigger validation
+agent-browser fill @e2 "email@example.com"
+agent-browser press Tab
+```
+
+---
+
+### Issue: Session Persistence Problems
+
+**Symptoms:** Previous session state not available
+
+**Cause:** Session wasn't properly named or browser closed unexpectedly
+
+**Solution:**
+```bash
+# 1. Always use explicit session names
+SESSION="my-workflow-$(date +%s)"  # Unique session ID
+agent-browser --session $SESSION open https://example.com
+
+# 2. Check active sessions
+agent-browser --session $SESSION get url
+# If error, session doesn't exist
+
+# 3. Don't reuse session names across runs
+# Each workflow should have unique session ID
+
+# 4. Cleanup sessions when done
+agent-browser --session $SESSION close
+```
+
+---
+
+### Issue: Chromium Installation Failed
+
+**Symptoms:**
+```
+Error: Failed to download Chromium
+```
+
+**Cause:** Network issues, disk space, or missing system dependencies
+
+**Solution:**
+```bash
+# 1. Check disk space
+df -h  # Ensure >2GB free
+
+# 2. Retry installation with verbose output
+agent-browser install --debug
+
+# 3. On Linux, install system dependencies first
+agent-browser install --with-deps
+
+# 4. Use custom browser if needed
+agent-browser --executable-path /usr/bin/chromium open https://example.com
+
+# 5. Verify installation
+agent-browser --version
+ls ~/.cache/ms-playwright/  # Check if Chromium exists
+```
+
+---
+
+### Issue: JSON Output Malformed
+
+**Symptoms:** Can't parse JSON output from commands
+
+**Cause:** Mixed text/JSON output or errors in JSON mode
+
+**Solution:**
+```bash
+# 1. Use --json flag consistently
+agent-browser get text @e5 --json  # Not: agent-browser get text @e5
+
+# 2. Redirect stderr to separate stream
+agent-browser snapshot --json 2>errors.log >output.json
+
+# 3. Validate JSON output
+agent-browser snapshot --json | jq .  # Will error if invalid
+
+# 4. Check for error messages in output
+agent-browser snapshot --json | grep -E '^{' | jq .
+```
+
+---
+
 ## Best Practices
 
 - **Always snapshot first**: Get element refs before interacting
