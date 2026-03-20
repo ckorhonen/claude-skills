@@ -67,6 +67,117 @@ Before using this skill for the first time:
 Run `bun scripts/validate-api-key.ts` to populate this section with your current permissions.
 <!-- PERMISSIONS_END -->
 
+## Examples
+
+### Example 1: Deploy New Worker API
+
+**User request:**
+```
+"Set up a Cloudflare worker for handling API requests and give me the URL"
+```
+
+**Workflow:**
+1. Validate API credentials exist in .env
+2. Deploy worker script:
+   ```bash
+   bun scripts/workers.ts deploy api-handler ./worker.js
+   ```
+3. Extract Cloudflare-generated URL from response
+4. Return URL: `https://api-handler.username.workers.dev`
+
+**Expected output:**
+```
+✅ Worker deployed successfully!
+📍 URL: https://api-handler.username.workers.dev
+🆔 Worker ID: abc123def456
+```
+
+**Time:** 2-5 seconds
+
+---
+
+### Example 2: Full Application Stack (Worker + KV + R2)
+
+**User request:**
+```
+"Set up a complete Cloudflare application with worker, key-value storage, and file storage"
+```
+
+**Workflow:**
+1. Create KV namespace for session caching:
+   ```bash
+   bun scripts/kv-storage.ts create-namespace app-sessions
+   # Returns: namespace-id-123
+   ```
+
+2. Create R2 bucket for user uploads:
+   ```bash
+   bun scripts/r2-storage.ts create-bucket app-uploads
+   # Returns: Bucket created: app-uploads
+   ```
+
+3. Deploy worker with bindings:
+   ```bash
+   bun scripts/workers.ts deploy app-api ./worker.js \
+     --kv-binding SESSION_STORE=namespace-id-123 \
+     --r2-binding UPLOADS=app-uploads
+   ```
+
+4. Configure custom domain route:
+   ```bash
+   bun scripts/dns-routes.ts create-route example.com \
+     "api.example.com/*" app-api
+   ```
+
+**Expected output:**
+```
+✅ KV namespace created: app-sessions (namespace-id-123)
+✅ R2 bucket created: app-uploads
+✅ Worker deployed: https://app-api.username.workers.dev
+✅ Route configured: api.example.com/* → app-api
+```
+
+**Time:** 8-12 seconds total
+
+---
+
+### Example 3: Deploy Static Site to Pages
+
+**User request:**
+```
+"Deploy my static site to Cloudflare Pages"
+```
+
+**Workflow:**
+1. Create Pages project (if doesn't exist):
+   ```bash
+   bun scripts/pages.ts deploy my-site ./dist
+   ```
+
+2. For first deployment with files, use Wrangler:
+   ```bash
+   npx wrangler pages deploy ./dist --project-name=my-site
+   ```
+
+3. Set environment variables:
+   ```bash
+   bun scripts/pages.ts set-env my-site API_URL https://api.example.com
+   bun scripts/pages.ts set-env my-site DEBUG false --env production
+   ```
+
+**Expected output:**
+```
+✅ Pages project created: my-site
+📍 URL: https://my-site.pages.dev
+🚀 Deploying files... (via Wrangler)
+✅ Deployment complete!
+✅ Environment variables set
+```
+
+**Time:** 15-30 seconds (depends on site size)
+
+---
+
 ## Quick Start Guide
 
 ### Deploy a Worker Container
@@ -427,6 +538,29 @@ For the most critical problems encountered in production, see [Common Pitfalls](
 - **API token scoping issues** → [API Token Scoping](#1-api-token-scoping-most-common-cause-of-failures)
 - **Wrangler OAuth failures** → [Wrangler OAuth Port Conflicts](#2-wrangler-oauth-port-conflicts)
 - **Deployment timeouts** → [Deployment Timeouts](#3-deployment-timeouts-large-projects)
+
+### Diagnostic Commands
+
+**First steps when something fails:**
+```bash
+# 1. Validate API credentials and permissions
+bun scripts/validate-api-key.ts
+
+# 2. List existing resources to check state
+bun scripts/workers.ts list
+bun scripts/kv-storage.ts list-namespaces
+bun scripts/r2-storage.ts list-buckets
+bun scripts/pages.ts list-projects
+
+# 3. Check specific resource details
+bun scripts/workers.ts get worker-name
+bun scripts/pages.ts list-deployments project-name
+```
+
+**When to use each:**
+- Step 1 (validate): Always run this first if ANY command fails
+- Step 2 (list): Check what resources actually exist
+- Step 3 (get details): Investigate specific resource state
 
 ### Common Issues and Solutions
 
