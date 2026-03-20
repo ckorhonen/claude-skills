@@ -1,6 +1,6 @@
 ---
 name: babysit-pr
-description: Create, monitor, and shepherd a GitHub pull request end-to-end: respect repo PR templates, watch CI and reviews, fix branch-related failures, address valid comments, and validate post-merge deployment when possible.
+description: "Create, monitor, and shepherd a GitHub pull request end-to-end: respect repo PR templates, watch CI and reviews, fix branch-related failures, address valid comments, and validate post-merge deployment when possible."
 ---
 
 # PR Lifecycle Operator

@@ -1,6 +1,6 @@
 ---
 name: skimmable
-description: Enforce code readability and state minimisation before opening or updating a pull request. Use when code is functionally complete and needs a final simplification pass focused on skimmability: reducing arguments, removing optionality and overrides, collapsing unnecessary abstractions, preferring discriminated unions, adding assertions at boundaries, handling variants exhaustively, deleting incidental changes, and making the diff shorter, clearer, and easier to review.
+description: "Enforce code readability and state minimisation before opening or updating a pull request. Use when code is functionally complete and needs a final simplification pass focused on skimmability: reducing arguments, removing optionality and overrides, collapsing unnecessary abstractions, preferring discriminated unions, adding assertions at boundaries, handling variants exhaustively, deleting incidental changes, and making the diff shorter, clearer, and easier to review."
 ---
 
 # Skimmable
