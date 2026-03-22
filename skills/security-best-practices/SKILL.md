@@ -85,7 +85,7 @@ When assigning an ID for some resource, which will then be used by exposed to th
 
 While TLS is important for production deployments, most development work will be with TLS disabled or provided by some out-of-scope TLS proxy. Due to this, be very careful about not reporting lack of TLS as a security issue. Also be very careful around use of "secure" cookies. They should only be set if the application will actually be over TLS. If they are set on non-TLS applications (such as when deployed for local dev or testing), it will break the application. You can provide a env or other flag to override setting secure as a way to keep it off until on a TLS production deployment. Additionally avoid recommending HSTS. It is dangerous to use without full understanding of the lasting impacts (can cause major outages and user lockout) and it is not generally recommended for the scope of projects being reviewed by codex.
 
-## Common Pitfalls
+### Common Pitfalls
 
 This section documents known failure modes and edge cases when applying security best practices:
 
@@ -98,7 +98,7 @@ This section documents known failure modes and edge cases when applying security
 - Treating all projects with equal security urgency (not all systems require the same threat model)
 
 **Mitigation:**
-- Always ask about the project's threat model, deployment context, and existing security controls before making recommendations
+- When generating a security report or preparing fixes, ask about the project's threat model, deployment context, and existing security controls before making recommendations
 - Read any security documentation, architectural decisions, or threat analysis the user has provided
 - If applying a fix, verify it doesn't break project-specific requirements or existing mitigations
 - Allow users to override best practices when they've documented why (and suggest adding documentation to the project)
@@ -118,6 +118,7 @@ This section documents known failure modes and edge cases when applying security
 - Do not report missing TLS as a security issue unless it's explicitly a production deployment
 - Consider providing environment flags to enable TLS-specific protections only in production
 
+> See also: [A note on TLS](#a-note-on-tls) above for related guidance
 ### 3. Over-Application of "Secure" Cookie Flags
 **Pitfall:** Recommending setting `Secure`, `HttpOnly`, and `SameSite` cookie flags in development environments, which breaks the application when running over non-TLS connections (localhost, HTTP-only dev servers).
 
@@ -134,6 +135,7 @@ This section documents known failure modes and edge cases when applying security
 - Test cookie-dependent flows (login, session management) after applying changes
 - Warn the user before making this change: "This will break cookie handling in non-TLS environments"
 
+> See also: [A note on TLS](#a-note-on-tls) above for related guidance
 ### 4. Missing Guidance on When to Ignore Best Practices
 **Pitfall:** Treating all security best practices as absolute rules, without acknowledging legitimate reasons to deviate, override, or postpone them.
 
