@@ -324,6 +324,92 @@ During the loop:
 
 When discarding a candidate, restore back to the last committed good state in the isolated worktree before starting the next idea.
 
+## Common Pitfalls
+
+Autoresearch is disciplined empiricism, but several failure modes emerge in long-running optimization loops. Knowing these patterns helps prevent wasted experiments and broken workflows.
+
+### 1. Experiment Loop Doesn't Terminate When Optimization Plateaus
+
+**Symptom:**
+- Agent continues running new experiments for many cycles after the last improvement
+- No clear stopping point; loop feels directionless after 10-15 experiments
+- Time/compute budget consumed without discovering new insights
+
+**Root Cause:**
+- Missing exit conditions beyond budget exhaustion
+- Agent assumes "more experiments = more knowledge" without checking for learning curve saturation
+- No systematic detection of repeated hypothesis patterns or diminishing returns
+
+**Mitigation:**
+- Set a **plateau threshold** in `autoresearch.md`: stop after N consecutive experiments with no improvement, e.g., "Stop if 3 experiments in a row show <0.5% gain"
+- Track **hypothesis diversity** — if new hypotheses are rewording old ideas, stop and document learnings
+- Implement a **moving-window heuristic**: calculate improvement velocity over the last 5 experiments; stop when velocity < 0.1% per experiment
+- Record stopping reason explicitly in `autoresearch.md` when exiting early
+
+### 2. Hypothesis Generation Becomes Repetitive After 5–10 Iterations
+
+**Symptom:**
+- Later experiments are minor variations on earlier ideas (e.g., "buffer size 16 vs. 32 vs. 24")
+- Hypotheses lack distinct causal theories; just tweaking constants
+- Diminishing variance in results, but no clear winner emerges
+
+**Root Cause:**
+- Agent defaults to local gradient descent without pausing to reflect on root causes
+- No explicit hypothesis inventory or cross-check for novelty
+- Hypothesis space is not well-explored before drilling into micro-optimizations
+
+**Mitigation:**
+- **Before each experiment**, write the hypothesis in a form that answers "why should this improve the metric?" If the answer is "because I'm turning a knob," pause and sketch a new direction first
+- **Document dead ends** — when discarding an experiment, explicitly note why it failed so future hypotheses don't retread that ground
+- **Rotate hypothesis types** every 3–4 experiments:
+  - algorithmic changes (e.g., trade hash table for skiplist)
+  - data structure changes (e.g., pre-allocation, layout)
+  - control flow changes (e.g., branch prediction, loop unrolling)
+  - external factors (e.g., compiler flags, sampling rate)
+- **Checkpoint & reflect**: after 5 experiments, re-read `autoresearch.md` and explicitly write a "What We've Learned" section with 2–3 key insights. If that section is empty, you're spinning
+
+### 3. Log Files Grow Unbounded on Long Runs
+
+**Symptom:**
+- `.autoresearch/` directory balloons to 10s or 100s of MB after 50+ experiments
+- Runtime of `python3 scripts/render_report.py` slows down measurably over time
+- Disk usage becomes an operational concern on resource-constrained machines
+
+**Root Cause:**
+- Each experiment produces a full JSON record, and records are never pruned
+- If measurements include verbose debug output or traces, they accumulate in the JSONL
+- HTML reports may embed all raw data inline, leading to multi-MB HTML files
+
+**Mitigation:**
+- **Archive periodically**: every 20 experiments, archive old results to `.autoresearch/archive/YYYYMMDD-run-N.jsonl` and restart with a fresh `results.jsonl`
+- **Limit measurement output**: ensure `autoresearch.sh` does not emit verbose logs; capture only `METRIC` lines
+- **Store summaries, not raw traces**: in `results.jsonl`, record `{"summary": {...}, "median": X}` instead of all raw trial values if space is critical
+- **Document archival in `autoresearch.md`**: note when the ledger was archived and how to access previous runs
+- **Monitor artifact size**: add a check in the loop: `du -sh .autoresearch/ | grep -qE '[0-9]+M' && echo "WARNING: artifact directory >100MB"`
+
+### 4. HTML Reports Don't Render Properly When Experiments > 100
+
+**Symptom:**
+- Browser lags or hangs when opening `.autoresearch/report.html` after many experiments
+- Charts fail to render or display only partial data
+- Page size balloons to 50+ MB, making it impractical to share or version-control
+
+**Root Cause:**
+- `render_report.py` generates a single monolithic HTML file with all data inlined
+- JavaScript charting library chokes on 100+ data points without pagination or lazy loading
+- No truncation or summary mode for large result sets
+
+**Mitigation:**
+- **Paginate results**: split the experiment ledger into chunks of 50 and generate separate report pages (`report-01.html`, `report-02.html`, etc.) with navigation links
+- **Use summary mode for large runs**: if `len(results) > 100`, render a condensed report that includes:
+  - table of kept experiments only (discard, crash, checks_failed filtered out)
+  - best-so-far trend line (not all individual points)
+  - per-phase statistical summary instead of per-experiment distributions
+- **Offload heavy data to JSON**: embed a `.autoresearch/data.json` with the full result set and reference it from the HTML with client-side rendering, so the HTML itself stays under 1 MB
+- **Auto-detect and warn**: in `render_report.py`, if result count > 100, log: `"WARNING: report contains >100 experiments; consider archiving old runs or using --summary-mode"`
+
+---
+
 ## Report Generation
 
 Generate or refresh `.autoresearch/report.html` periodically and always at the end of the session:

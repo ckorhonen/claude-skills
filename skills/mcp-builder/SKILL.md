@@ -193,6 +193,272 @@ Create an XML file with this structure:
 
 ---
 
+# Common Pitfalls
+
+MCP server development encounters several predictable failure modes. These gotchas represent real problems discovered during implementation.
+
+## 1. Server Doesn't Start After Generation
+
+**Symptoms:**
+- `npm start` fails with exit code 1
+- Process starts but immediately crashes
+- Port already in use error
+
+**Root Causes:**
+- Missing dependencies (SDK version mismatch, incomplete npm install)
+- Port conflict with existing process
+- Incorrect environment variable configuration
+- Invalid configuration in `.npmrc` or `tsconfig.json`
+
+**Debugging Commands:**
+
+```bash
+# Verify dependencies are installed
+npm list @modelcontextprotocol/sdk
+
+# Check if port is in use
+lsof -i :3000  # Replace 3000 with your port
+netstat -an | grep LISTEN | grep 3000
+
+# Clear cache and reinstall
+rm -rf node_modules package-lock.json
+npm install
+
+# Run with verbose output to see initialization errors
+npm start -- --debug
+NODE_DEBUG=* npm start  # Maximum verbosity for Node.js internals
+
+# For TypeScript, verify compilation first
+npm run build
+npx tsc --noEmit  # Check for type errors without building
+
+# Check for missing env variables
+env | grep MCP  # See what MCP-related vars are set
+```
+
+**Prevention:**
+- Always run `npm install` after generating project
+- Use explicit port numbers in configuration files
+- Document required environment variables in `.env.example`
+- Test compilation before starting: `npm run build`
+
+---
+
+## 2. Tool Schemas Don't Validate
+
+**Symptoms:**
+- MCP Inspector shows "Invalid schema" error
+- Client rejects tool with 422 error
+- Tool works in one SDK version but not another
+
+**Root Causes:**
+- JSON Schema violations in Zod/Pydantic definitions
+- Missing required fields in schema objects
+- Incorrect `type` annotations
+- Circular schema references
+- Invalid constraints (pattern regex, min/max without number type)
+
+**Debugging Commands:**
+
+```bash
+# Validate schema syntax
+npx @modelcontextprotocol/inspector  # GUI debugger, shows schema errors clearly
+
+# Test schema compilation directly (TypeScript)
+cat > test-schema.ts << 'EOF'
+import { z } from 'zod';
+const schema = z.object({
+  // your schema here
+});
+console.log(JSON.stringify(schema.safeParse({}), null, 2));
+EOF
+npx ts-node test-schema.ts
+
+# For Python, test Pydantic directly
+python3 << 'EOF'
+from pydantic import BaseModel
+class MyTool(BaseModel):
+    # your fields here
+    pass
+print(MyTool.model_json_schema())
+EOF
+
+# Print actual schema being sent to client
+# In your server code, log before registration:
+console.log(JSON.stringify(toolSchema, null, 2));
+
+# Test with invalid inputs to see error messages
+# In MCP Inspector, try calling tool with:
+# - Missing required fields
+# - Wrong types (string instead of number)
+# - Values outside constraints
+```
+
+**Prevention:**
+- Use TypeScript with strict mode enabled (`strict: true` in tsconfig.json)
+- Test each schema change: `npm run build`
+- Print schema JSON to console during development
+- Use MCP Inspector's schema validation (it's the source of truth)
+- Keep schemas simple; break complex tools into smaller ones
+- Document constraints in field descriptions (min/max values, regex patterns)
+
+---
+
+## 3. Authentication Flows Fail
+
+**Symptoms:**
+- "Unauthorized" or "403 Forbidden" errors
+- API key not being sent with requests
+- OAuth token expired or invalid
+- Credentials work locally but fail when deployed
+
+**Root Causes:**
+- Environment variables not set in deployment environment
+- Credentials expired or revoked
+- Wrong header format for API authentication (Bearer vs Basic)
+- OAuth redirect URI doesn't match registration
+- Missing scopes in OAuth request
+- Credentials accidentally hardcoded instead of using env vars
+
+**Debugging Commands:**
+
+```bash
+# Verify environment variables are accessible
+node -e "const k = process.env.API_KEY; console.log('Key set:', !!k, '| Length:', k?.length, '| Prefix:', k?.substring(0, 4) + '***')"
+
+# Check if file-based credentials exist
+test -f ~/.aws/credentials && echo "AWS creds found" || echo "AWS creds missing"
+test -f ~/.config/github-cli/hosts.yml && echo "GitHub token found" || echo "GitHub token missing"
+
+# Validate API key format before use
+node -e "const key = process.env.API_KEY; console.log('Key length:', key?.length); console.log('Key prefix:', key?.substring(0, 10));"
+
+# Test API authentication directly
+curl -H "Authorization: Bearer $API_KEY" https://api.example.com/v1/test
+curl -H "X-API-Key: $API_KEY" https://api.example.com/v1/test  # Alternative header
+
+# Check OAuth token expiration
+node -e "const payload = JSON.parse(Buffer.from(process.env.OAUTH_TOKEN.split('.')[1], 'base64url').toString()); console.log('Expires:', new Date(payload.exp * 1000));"
+
+# For deployed servers, check what environment was actually loaded
+# Add this to your server initialization:
+console.error('Auth check:', {
+  hasApiKey: !!process.env.API_KEY,
+  keyLength: process.env.API_KEY?.length,
+  keyPrefix: process.env.API_KEY?.substring(0, 10) + '***'
+});
+```
+
+**Prevention:**
+- Never hardcode credentials; always use environment variables
+- Create `.env.example` with placeholder values for all required credentials
+- Document which credentials are optional vs. required
+- Use dotenv library to load `.env` file in development
+- Log credential status at startup (without exposing actual values)
+- Implement credential validation on server start that fails fast
+- For deployed servers, use platform-native secrets management (GitHub Secrets, Fly.io Secrets, etc.)
+- Test auth independently before testing tools: `curl` with credentials first
+
+---
+
+## 4. Client Connection Timeouts
+
+**Symptoms:**
+- "Connection timeout" error after 30 seconds
+- Client can't find server
+- Stdio transport works locally but not in MCP Inspector
+- Streamable HTTP server never receives requests
+
+**Root Causes:**
+- Server process crashes before client connects
+- Wrong port/hostname in client configuration
+- Firewall blocking connections
+- Server thread deadlocks during initialization
+- Incorrect stdio transport setup (stdin/stdout not properly connected)
+- Server takes too long to initialize (exceed default timeout)
+
+**Debugging Commands:**
+
+```bash
+# For stdio transport, test directly
+npx @modelcontextprotocol/inspector stdio node dist/index.js
+
+# For HTTP transport, verify server is listening
+lsof -i -n -P | grep LISTEN  # See all listening ports
+curl http://localhost:3000/ -v  # Try to reach server directly
+
+# Monitor server startup time
+time npm start  # Measure total startup duration
+
+# Check if process is using all CPU (deadlock indicator)
+top -n1 | grep node  # See if CPU% is stuck at 100
+
+# For stdio issues, run server directly to see output
+node dist/index.js  # If it hangs here, initialization is blocking
+# Try interrupt (Ctrl+C) to see if it's truly stuck
+
+# Check for port binding issues
+ss -tlnp | grep 3000  # Linux
+netstat -tlnp | grep 3000  # Linux alternative
+lsof -i TCP:3000  # macOS/BSD
+
+# Test server connectivity with timeout
+timeout 5 curl -v http://localhost:3000/ || echo "Connection failed or timeout"
+```
+
+**Prevention:**
+- Add startup logging: log when server starts, log after each major initialization step
+- Implement a health check endpoint: `GET /health` returns `200 OK`
+- Use MCP Inspector for testing (it catches connection issues quickly)
+- Keep server initialization lightweight; defer expensive operations to first request
+- Set explicit timeouts on external API calls (don't leave them hanging indefinitely)
+- Test stdio transport with `npx @modelcontextprotocol/inspector stdio <command>`
+- For HTTP transport, expose `/health` and test it independently
+- Monitor memory usage during startup (leaks indicate problems)
+
+---
+
+## Systematic Debugging Workflow
+
+When your MCP server isn't working:
+
+1. **Check logs first**: Most failures are logged. Run with verbose output:
+   ```bash
+   NODE_DEBUG=* npm start 2>&1 | head -50
+   ```
+
+2. **Use MCP Inspector**: Start it independently and select your server:
+   ```bash
+   npx @modelcontextprotocol/inspector
+   ```
+   It shows schema errors, connection issues, and tool execution failures clearly.
+
+3. **Test in isolation**: Before testing with a client, verify server works standalone:
+   ```bash
+   npm run build && node dist/index.js
+   ```
+
+4. **Check external dependencies**: Verify API credentials, network access, firewall:
+   ```bash
+   curl -v https://api.example.com/  # Does API respond?
+   ```
+
+5. **Add instrumentation**: When stuck, add logging to understand what's happening:
+   ```typescript
+   server.setRequestHandler(Tool, async (request) => {
+     console.error('Tool called:', request.params.name);
+     try {
+       // implementation
+       console.error('Tool succeeded');
+     } catch (error) {
+       console.error('Tool failed:', error);
+       throw error;
+     }
+   });
+   ```
+
+---
+
 # Reference Files
 
 ## 📚 Documentation Library

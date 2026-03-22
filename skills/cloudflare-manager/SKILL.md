@@ -67,6 +67,117 @@ Before using this skill for the first time:
 Run `bun scripts/validate-api-key.ts` to populate this section with your current permissions.
 <!-- PERMISSIONS_END -->
 
+## Examples
+
+### Example 1: Deploy New Worker API
+
+**User request:**
+```
+"Set up a Cloudflare worker for handling API requests and give me the URL"
+```
+
+**Workflow:**
+1. Validate API credentials exist in .env
+2. Deploy worker script:
+   ```bash
+   bun scripts/workers.ts deploy api-handler ./worker.js
+   ```
+3. Extract Cloudflare-generated URL from response
+4. Return URL: `https://api-handler.username.workers.dev`
+
+**Expected output:**
+```
+✅ Worker deployed successfully!
+📍 URL: https://api-handler.username.workers.dev
+🆔 Worker ID: abc123def456
+```
+
+**Time:** 2-5 seconds
+
+---
+
+### Example 2: Full Application Stack (Worker + KV + R2)
+
+**User request:**
+```
+"Set up a complete Cloudflare application with worker, key-value storage, and file storage"
+```
+
+**Workflow:**
+1. Create KV namespace for session caching:
+   ```bash
+   bun scripts/kv-storage.ts create-namespace app-sessions
+   # Returns: namespace-id-123
+   ```
+
+2. Create R2 bucket for user uploads:
+   ```bash
+   bun scripts/r2-storage.ts create-bucket app-uploads
+   # Returns: Bucket created: app-uploads
+   ```
+
+3. Deploy worker with bindings:
+   ```bash
+   bun scripts/workers.ts deploy app-api ./worker.js \
+     --kv-binding SESSION_STORE=namespace-id-123 \
+     --r2-binding UPLOADS=app-uploads
+   ```
+
+4. Configure custom domain route:
+   ```bash
+   bun scripts/dns-routes.ts create-route example.com \
+     "api.example.com/*" app-api
+   ```
+
+**Expected output:**
+```
+✅ KV namespace created: app-sessions (namespace-id-123)
+✅ R2 bucket created: app-uploads
+✅ Worker deployed: https://app-api.username.workers.dev
+✅ Route configured: api.example.com/* → app-api
+```
+
+**Time:** 8-12 seconds total
+
+---
+
+### Example 3: Deploy Static Site to Pages
+
+**User request:**
+```
+"Deploy my static site to Cloudflare Pages"
+```
+
+**Workflow:**
+1. Create Pages project (if doesn't exist):
+   ```bash
+   bun scripts/pages.ts deploy my-site ./dist
+   ```
+
+2. For first deployment with files, use Wrangler:
+   ```bash
+   npx wrangler pages deploy ./dist --project-name=my-site
+   ```
+
+3. Set environment variables:
+   ```bash
+   bun scripts/pages.ts set-env my-site API_URL https://api.example.com
+   bun scripts/pages.ts set-env my-site DEBUG false --env production
+   ```
+
+**Expected output:**
+```
+✅ Pages project created: my-site
+📍 URL: https://my-site.pages.dev
+🚀 Deploying files... (via Wrangler)
+✅ Deployment complete!
+✅ Environment variables set
+```
+
+**Time:** 15-30 seconds (depends on site size)
+
+---
+
 ## Quick Start Guide
 
 ### Deploy a Worker Container
@@ -96,6 +207,82 @@ Claude: [Deploys worker using bun scripts/workers.ts deploy api-handler ./worker
 - `1`: Failure - check error message for details
 
 **Performance**: Deployment typically completes in 2-5 seconds
+
+## Common Pitfalls
+
+⚠️ **Most Critical Issues** — Address these first if you encounter problems:
+
+### 1. API Token Scoping (Most Common Cause of Failures)
+
+**The Problem**: API tokens with insufficient or incorrectly scoped permissions fail silently with 403 errors, making debugging very difficult.
+
+**How to Avoid**:
+- When creating a token at https://dash.cloudflare.com/profile/api-tokens, use the **"Edit Cloudflare Workers"** template — don't use "Read All" or custom scopes without the right permissions
+- **Required minimum scopes**:
+  - Account > Workers Scripts > Edit
+  - Account > Workers KV Storage > Edit
+  - Account > Workers R2 Storage > Edit
+  - Zone > DNS > Edit (only if using custom domains)
+- **Verify your token** immediately after creation:
+  ```bash
+  bun scripts/validate-api-key.ts
+  ```
+  This shows exactly which permissions you have. **Do this every time you create or update a token.**
+
+**Quick Diagnosis**:
+```bash
+# If you see "Insufficient permissions", stop and fix the token:
+bun scripts/validate-api-key.ts
+# If any required permission shows ❌, update token at:
+# https://dash.cloudflare.com/profile/api-tokens
+```
+
+---
+
+### 2. Wrangler OAuth Port Conflicts
+
+**The Problem**: `wrangler login` uses port 8976 for the OAuth callback. If another `wrangler dev` or `wrangler pages dev` process is already running, the login flow will fail silently — the browser tab opens but never receives the OAuth redirect.
+
+**How to Avoid**:
+- Before running `wrangler login`, **kill all other Wrangler processes**:
+  ```bash
+  pkill -f wrangler
+  ```
+- Then run login:
+  ```bash
+  wrangler login
+  ```
+- Only start `wrangler dev` or Pages after login completes
+
+**Why This Happens**: Wrangler doesn't queue OAuth callbacks — the first process to bind port 8976 gets the callback. If that's a dev server, login attempts silently fail.
+
+---
+
+### 3. Deployment Timeouts (Large Projects)
+
+**The Problem**: Workers and Pages deployments timeout if the project is too large or network connectivity is unstable. Timeouts also occur during peak Cloudflare load.
+
+**How to Avoid**:
+- **Worker scripts**: Keep under 1MB (smaller = faster cold start)
+- **Pages deployments**: 
+  - Projects with >1000 files may take 5-10 minutes
+  - Use `.cloudflare/` ignore patterns to exclude node_modules, build caches, etc.
+  - For large deployments, use Wrangler CLI directly:
+    ```bash
+    npx wrangler pages deploy ./dist --project-name=my-app
+    ```
+- **Network**: Deploy from a stable connection. Retries use exponential backoff and should succeed automatically
+- **If stuck in pending state**:
+  ```bash
+  bun scripts/pages.ts list-deployments my-app  # Check status
+  # If truly stuck, delete and recreate the project
+  ```
+
+---
+
+## Reference: Troubleshooting Guide
+
+For detailed solutions to specific error messages, see the [Troubleshooting](#troubleshooting) section below.
 
 ### Create and Use KV Storage
 
@@ -344,6 +531,36 @@ Starter templates are available in `~/.claude/skills/cloudflare-manager/template
 - **wrangler.toml.template**: Wrangler configuration template
 
 ## Troubleshooting
+
+### Quick Link: High-Priority Issues
+
+For the most critical problems encountered in production, see [Common Pitfalls](#common-pitfalls) above:
+- **API token scoping issues** → [API Token Scoping](#1-api-token-scoping-most-common-cause-of-failures)
+- **Wrangler OAuth failures** → [Wrangler OAuth Port Conflicts](#2-wrangler-oauth-port-conflicts)
+- **Deployment timeouts** → [Deployment Timeouts](#3-deployment-timeouts-large-projects)
+
+### Diagnostic Commands
+
+**First steps when something fails:**
+```bash
+# 1. Validate API credentials and permissions
+bun scripts/validate-api-key.ts
+
+# 2. List existing resources to check state
+bun scripts/workers.ts list
+bun scripts/kv-storage.ts list-namespaces
+bun scripts/r2-storage.ts list-buckets
+bun scripts/pages.ts list-projects
+
+# 3. Check specific resource details
+bun scripts/workers.ts get worker-name
+bun scripts/pages.ts list-deployments project-name
+```
+
+**When to use each:**
+- Step 1 (validate): Always run this first if ANY command fails
+- Step 2 (list): Check what resources actually exist
+- Step 3 (get details): Investigate specific resource state
 
 ### Common Issues and Solutions
 

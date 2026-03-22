@@ -50,7 +50,7 @@ Deliver an actionable AppSec-grade threat model that is specific to the reposito
 - Summarize key assumptions that materially affect threat ranking or scope, then ask the user to confirm or correct them.
 - Ask 1–3 targeted questions to resolve missing context (service owner and environment, scale/users, deployment model, authn/authz, internet exposure, data sensitivity, multi-tenancy).
 - Pause and wait for user feedback before producing the final report.
-- If the user declines or can't answer, state which assumptions remain and how they influence priority.
+- If the user declines or can’t answer, state which assumptions remain and how they influence priority.
 
 ### 7) Recommend mitigations and focus paths
 - Distinguish existing mitigations (with evidence) from recommended mitigations.
@@ -76,7 +76,7 @@ These are the most frequent failure modes encountered when threat modeling. Avoi
 ### 1. Threat Model Too Abstract (No Concrete Attack Vectors)
 **Problem:** Threat descriptions read like generic security checklist items rather than specific abuse paths anchored to actual code, configurations, or deployment architecture.
 
-**Example of bad:** "Attacker gains unauthorized access to sensitive data"
+**Example of bad:** "Attacker gains unauthorized access to sensitive data"  
 **Example of good:** "An attacker without authentication can exfiltrate API keys from `config.json` if the process is deployed with filesystem permissions allowing world-read access, enabling privilege escalation to AWS"
 
 **How to avoid:** For every threat, ask: *Which component? Which entry point? What specific code path or boundary does the attacker exploit?* If you can't answer, go back to the repo and find the concrete evidence (code, config template, deployment docs).
@@ -84,7 +84,7 @@ These are the most frequent failure modes encountered when threat modeling. Avoi
 ### 2. Missing Threat Actors and Motivations (Generic Adversaries)
 **Problem:** Threat model lists threats without defining who the attacker is, what they want, and what resources they have. This makes prioritization meaningless because you can't assess likelihood.
 
-**Example of bad:** "Attacker compromises the system"
+**Example of bad:** "Attacker compromises the system"  
 **Example of good:** "A disgruntled employee with internal API access steals PII to sell on a darknet market. Likelihood: medium (few employees have access; audit logs exist but aren't monitored in real-time)"
 
 **How to avoid:** Define 3-4 realistic attacker profiles for your system:
@@ -98,7 +98,7 @@ For each threat, state which actor(s) can exploit it and why they would.
 ### 3. No Prioritization (Everything Is "Critical")
 **Problem:** Every threat gets marked critical because the impact is theoretically severe. This makes the threat model unhelpful—teams can't focus because nothing is prioritized, and credibility erodes ("threat models are just scare tactics").
 
-**Example of bad:** All 25 threats marked "Critical"
+**Example of bad:** All 25 threats marked "Critical"  
 **Example of good:** "Supply chain RCE via dependency: **Critical** (high likelihood pre-exploit patch, catastrophic impact). User brute-force of weak password: **Medium** (low likelihood with rate limiting and 2FA, but integrity impact is high if successful)."
 
 **How to avoid:** Use the likelihood × impact grid. Adjust final priority based on existing controls. Ask:
@@ -111,7 +111,7 @@ Mark as "Conditional High" if priority depends on user assumptions you haven't c
 ### 4. Mitigations Without Implementation Details (Vague Recommendations)
 **Problem:** Recommendations read like security platitudes ("add authentication," "encrypt data," "enable logging") rather than specific code locations or control mechanisms. Teams don't know where to start.
 
-**Example of bad:** "Add input validation to prevent injection attacks"
+**Example of bad:** "Add input validation to prevent injection attacks"  
 **Example of good:** "Enforce JSON schema validation on the `/api/upload` endpoint handler (src/handlers/upload.ts:42) before passing to the document parser. Use Zod or Ajv to reject payloads with > 10MB or disallowed MIME types."
 
 **How to avoid:** For every mitigation:
@@ -123,7 +123,7 @@ Mark as "Conditional High" if priority depends on user assumptions you haven't c
 ### 5. Missing Threat Model Maintenance Plan (One-Time Exercise)
 **Problem:** Threat model is delivered as a snapshot but the system evolves. New entry points are added, dependencies are upgraded, team changes. The model stales within weeks and loses credibility.
 
-**Example of bad:** "Here's your threat model, good luck!"
+**Example of bad:** "Here's your threat model, good luck!"  
 **Example of good:** "Threat model is versioned in Git. Review schedule: after each major deployment, quarterly team review, and whenever a new dependency or integration is added. Update-trigger checklist: new user roles, new APIs, new data sources, infrastructure changes."
 
 **How to avoid:** Before finalizing, agree on:
