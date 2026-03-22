@@ -270,7 +270,7 @@ import { z } from 'zod';
 const schema = z.object({
   // your schema here
 });
-console.log(schema.parse({}));
+console.log(JSON.stringify(schema.safeParse({}), null, 2));
 EOF
 npx ts-node test-schema.ts
 
@@ -324,7 +324,7 @@ console.log(JSON.stringify(toolSchema, null, 2));
 
 ```bash
 # Verify environment variables are accessible
-node -e "console.log(process.env.API_KEY)"
+node -e "const k = process.env.API_KEY; console.log('Key set:', !!k, '| Length:', k?.length, '| Prefix:', k?.substring(0, 4) + '***')"
 
 # Check if file-based credentials exist
 test -f ~/.aws/credentials && echo "AWS creds found" || echo "AWS creds missing"
@@ -338,7 +338,7 @@ curl -H "Authorization: Bearer $API_KEY" https://api.example.com/v1/test
 curl -H "X-API-Key: $API_KEY" https://api.example.com/v1/test  # Alternative header
 
 # Check OAuth token expiration
-node -e "const payload = JSON.parse(Buffer.from(process.env.OAUTH_TOKEN.split('.')[1], 'base64').toString()); console.log('Expires:', new Date(payload.exp * 1000));"
+node -e "const payload = JSON.parse(Buffer.from(process.env.OAUTH_TOKEN.split('.')[1], 'base64url').toString()); console.log('Expires:', new Date(payload.exp * 1000));"
 
 # For deployed servers, check what environment was actually loaded
 # Add this to your server initialization:
