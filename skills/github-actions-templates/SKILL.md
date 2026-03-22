@@ -28,9 +28,9 @@ name: Test
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   test:
@@ -41,27 +41,27 @@ jobs:
         node-version: [18.x, 20.x]
 
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v4
-      with:
-        node-version: ${{ matrix.node-version }}
-        cache: 'npm'
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: "npm"
 
-    - name: Install dependencies
-      run: npm ci
+      - name: Install dependencies
+        run: npm ci
 
-    - name: Run linter
-      run: npm run lint
+      - name: Run linter
+        run: npm run lint
 
-    - name: Run tests
-      run: npm test
+      - name: Run tests
+        run: npm test
 
-    - name: Upload coverage
-      uses: codecov/codecov-action@v3
-      with:
-        files: ./coverage/lcov.info
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage/lcov.info
 ```
 
 **Reference:** See `assets/test-workflow.yml`
@@ -73,8 +73,8 @@ name: Build and Push
 
 on:
   push:
-    branches: [ main ]
-    tags: [ 'v*' ]
+    branches: [main]
+    tags: ["v*"]
 
 env:
   REGISTRY: ghcr.io
@@ -88,35 +88,35 @@ jobs:
       packages: write
 
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Log in to Container Registry
-      uses: docker/login-action@v3
-      with:
-        registry: ${{ env.REGISTRY }}
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Extract metadata
-      id: meta
-      uses: docker/metadata-action@v5
-      with:
-        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-        tags: |
-          type=ref,event=branch
-          type=ref,event=pr
-          type=semver,pattern={{version}}
-          type=semver,pattern={{major}}.{{minor}}
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
 
-    - name: Build and push
-      uses: docker/build-push-action@v5
-      with:
-        context: .
-        push: true
-        tags: ${{ steps.meta.outputs.tags }}
-        labels: ${{ steps.meta.outputs.labels }}
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 ```
 
 **Reference:** See `assets/deploy-workflow.yml`
@@ -128,36 +128,36 @@ name: Deploy to Kubernetes
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v4
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: us-west-2
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-west-2
 
-    - name: Update kubeconfig
-      run: |
-        aws eks update-kubeconfig --name production-cluster --region us-west-2
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig --name production-cluster --region us-west-2
 
-    - name: Deploy to Kubernetes
-      run: |
-        kubectl apply -f k8s/
-        kubectl rollout status deployment/my-app -n production
-        kubectl get services -n production
+      - name: Deploy to Kubernetes
+        run: |
+          kubectl apply -f k8s/
+          kubectl rollout status deployment/my-app -n production
+          kubectl get services -n production
 
-    - name: Verify deployment
-      run: |
-        kubectl get pods -n production
-        kubectl describe deployment my-app -n production
+      - name: Verify deployment
+        run: |
+          kubectl get pods -n production
+          kubectl describe deployment my-app -n production
 ```
 
 ### Pattern 4: Matrix Build
@@ -174,23 +174,23 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        python-version: ['3.9', '3.10', '3.11', '3.12']
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
 
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: ${{ matrix.python-version }}
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
-    - name: Run tests
-      run: pytest
+      - name: Run tests
+        run: pytest
 ```
 
 **Reference:** See `assets/matrix-build.yml`
@@ -228,21 +228,22 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    - uses: actions/setup-node@v4
-      with:
-        node-version: ${{ inputs.node-version }}
-    - run: npm ci
-    - run: npm test
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node-version }}
+      - run: npm ci
+      - run: npm test
 ```
 
 **Use reusable workflow:**
+
 ```yaml
 jobs:
   call-test:
     uses: ./.github/workflows/reusable-test.yml
     with:
-      node-version: '20.x'
+      node-version: "20.x"
     secrets:
       NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 ```
@@ -254,34 +255,34 @@ name: Security Scan
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   security:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Run Trivy vulnerability scanner
-      uses: aquasecurity/trivy-action@master
-      with:
-        scan-type: 'fs'
-        scan-ref: '.'
-        format: 'sarif'
-        output: 'trivy-results.sarif'
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: "fs"
+          scan-ref: "."
+          format: "sarif"
+          output: "trivy-results.sarif"
 
-    - name: Upload Trivy results to GitHub Security
-      uses: github/codeql-action/upload-sarif@v2
-      with:
-        sarif_file: 'trivy-results.sarif'
+      - name: Upload Trivy results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: "trivy-results.sarif"
 
-    - name: Run Snyk Security Scan
-      uses: snyk/actions/node@master
-      env:
-        SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      - name: Run Snyk Security Scan
+        uses: snyk/actions/node@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 ```
 
 ## Deployment with Approvals
@@ -291,7 +292,7 @@ name: Deploy to Production
 
 on:
   push:
-    tags: [ 'v*' ]
+    tags: ["v*"]
 
 jobs:
   deploy:
@@ -301,22 +302,22 @@ jobs:
       url: https://app.example.com
 
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Deploy application
-      run: |
-        echo "Deploying to production..."
-        # Deployment commands here
+      - name: Deploy application
+        run: |
+          echo "Deploying to production..."
+          # Deployment commands here
 
-    - name: Notify Slack
-      if: success()
-      uses: slackapi/slack-github-action@v1
-      with:
-        webhook-url: ${{ secrets.SLACK_WEBHOOK }}
-        payload: |
-          {
-            "text": "Deployment to production completed successfully!"
-          }
+      - name: Notify Slack
+        if: success()
+        uses: slackapi/slack-github-action@v1
+        with:
+          webhook-url: ${{ secrets.SLACK_WEBHOOK }}
+          payload: |
+            {
+              "text": "Deployment to production completed successfully!"
+            }
 ```
 
 ## Common Pitfalls
@@ -330,6 +331,7 @@ This section documents real failure modes and anti-patterns that cause GitHub Ac
 **Common Errors:**
 
 #### Incorrect indentation
+
 ```yaml
 # ❌ WRONG - Missing indentation
 on: push
@@ -347,10 +349,12 @@ jobs:
     steps:
       - run: npm test
 ```
+
 **Error message:** `"unexpected mapping value" or "mapping values are not allowed here"`
 **Fix:** YAML is 2-space indentation strict. Use a YAML linter like `yamllint` in your workflow.
 
 #### Expression syntax confusion
+
 ```yaml
 # ❌ WRONG - Using $ without github context
 - run: echo ${{ matrix.node-version }}
@@ -366,10 +370,12 @@ env:
 env:
   MY_VAR: "${{ github.event.pull_request.title }}"
 ```
+
 **Error message:** `"Unable to process template language"` or `"unrecognized named value"`
 **Fix:** Always quote expressions that will be used in shell commands or as strings. GitHub Actions requires proper quoting for safe expansion.
 
 #### Multiline strings without pipe syntax
+
 ```yaml
 # ❌ WRONG - Multiline without | or >
 - run: echo "Line 1
@@ -388,6 +394,7 @@ Line 2"
     command that spans
     multiple lines
 ```
+
 **Error message:** `"expected '<block end>', but found '\\n'"`
 **Fix:** Use `|` for literal blocks (preserves newlines) or `>` for folded blocks (folds newlines to spaces).
 
@@ -400,6 +407,7 @@ Line 2"
 **Critical Mistakes:**
 
 #### Hardcoding secrets in workflow files
+
 ```yaml
 # ❌ ABSOLUTELY WRONG - Secret is now in git history
 - run: |
@@ -407,34 +415,36 @@ Line 2"
     --aws-access-key-id AKIA1234567890ABCDEF \
     --aws-secret-access-key wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
 ```
+
 **Error message:** None initially, but this is a critical security vulnerability.
 **Fix:** Always use `${{ secrets.SECRET_NAME }}` and define secrets in GitHub repository settings.
 
 #### Accessing secrets in non-secret contexts
-```yaml
-# ❌ WRONG - Secrets not available in expressions before job runs
-env:
-  MESSAGE: ${{ secrets.MY_SECRET }}  # ← Undefined!
 
-# ❌ WRONG - Secrets masked in logs but not available here
+```yaml
+# ❌ WRONG - Secrets not available in if: conditionals
 if: ${{ secrets.DEPLOY_KEY != '' }}
 
-# ✅ CORRECT - Pass secret to step where it's needed
+# ✅ CORRECT - Secrets work in env: blocks at job and step level
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      MESSAGE: ${{ secrets.MY_SECRET }} # ← Works at job level
     steps:
-    - name: Deploy
-      env:
-        DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
-      run: |
-        # Now DEPLOY_KEY is available here
-        ./deploy.sh
+      - name: Deploy
+        env:
+          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }} # ← Works at step level
+        run: |
+          # Now DEPLOY_KEY is available here
+          ./deploy.sh
 ```
-**Error message:** Secret appears as `***` (masked) but is actually empty/undefined.
-**Fix:** Define secrets at the step level where they're used, not at job level. Never use secrets in `if:` conditions.
+
+**Error message:** Secret appears as `***` (masked) but is actually empty/undefined when used in `if:` conditions.
+**Fix:** Use secrets in `env:` blocks at job or step level. Never use secrets in `if:` conditions — they are not available there.
 
 #### Forgetting to mark outputs as sensitive
+
 ```yaml
 # ❌ WRONG - Logs leak credentials
 - name: Get credentials
@@ -452,10 +462,12 @@ jobs:
   # Then reference as:
   # ${{ steps.creds.outputs.token }}
 ```
+
 **Error message:** Credentials appear in plain text in workflow logs.
 **Fix:** Use `$GITHUB_OUTPUT` for sensitive values, and never `echo` them directly.
 
 #### Wrong secret context in reusable workflows
+
 ```yaml
 # ❌ WRONG - Parent secrets aren't automatically passed
 jobs:
@@ -469,6 +481,7 @@ jobs:
     uses: ./.github/workflows/deploy.yml
     secrets: inherit  # ← Pass all parent secrets
 ```
+
 **Error message:** Workflow runs but secrets are undefined in called workflow.
 **Fix:** Include `secrets: inherit` when calling reusable workflows that need secrets.
 
@@ -481,6 +494,7 @@ jobs:
 **Common Problems:**
 
 #### Insufficient token permissions
+
 ```yaml
 # ❌ WRONG - Trying to write packages with default permissions
 - name: Push to Docker registry
@@ -501,10 +515,12 @@ jobs:
     - name: Push to Docker registry
       run: docker push ghcr.io/${{ github.repository }}:latest
 ```
+
 **Error message:** `"authentication failed, permission denied"` or `"Insufficient permissions"` from API
 **Fix:** Always explicitly declare `permissions:` at job level with required scopes (contents, packages, id-token, pull-requests, issues, deployments, etc.)
 
 #### Trying to use GITHUB_TOKEN for operations it can't do
+
 ```yaml
 # ❌ WRONG - GITHUB_TOKEN can't trigger other workflows
 - name: Trigger deployment
@@ -521,10 +537,12 @@ jobs:
       -H "Authorization: token ${{ secrets.WORKFLOW_PAT }}" \
       -d '{"event_type":"deploy"}'
 ```
+
 **Error message:** `"Resource not accessible by integration"` (HTTP 403)
 **Fix:** GITHUB_TOKEN can't trigger workflows (`repository_dispatch`). Use a PAT stored in secrets for this.
 
 #### Cross-repository access failures
+
 ```yaml
 # ❌ WRONG - GITHUB_TOKEN only has access to current repo
 - name: Clone another repo
@@ -537,6 +555,7 @@ jobs:
   run: |
     git clone https://x-access-token:${{ secrets.CROSS_REPO_PAT }}@github.com/other-org/private-repo.git
 ```
+
 **Error message:** `"fatal: could not read Username for 'https://github.com': terminal prompts disabled"`
 **Fix:** Use a Personal Access Token (PAT) with `repo` or `read:repo_hook` scope for cross-repository access.
 
@@ -549,89 +568,108 @@ jobs:
 **Common Pitfalls:**
 
 #### Undefined matrix context in steps
+
 ```yaml
 # ❌ WRONG - Using matrix variables that don't exist
-strategy:
-  matrix:
-    os: [ubuntu-latest, macos-latest]
-    # No 'version' defined here
-
 jobs:
   build:
     runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        # No 'version' defined here
     steps:
     - run: echo "Version is ${{ matrix.version }}"  # ← Empty!
 
 # ✅ CORRECT - Define all matrix variables used
-strategy:
-  matrix:
-    os: [ubuntu-latest, macos-latest]
-    version: ['1.0', '2.0']
-    
 jobs:
   build:
     runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        version: ['1.0', '2.0']
     steps:
     - run: echo "Building for ${{ matrix.os }} v${{ matrix.version }}"
 ```
+
 **Error message:** Matrix variable appears empty or undefined in logs.
 **Fix:** All variables referenced in steps must be defined in `strategy.matrix`.
 
 #### Broken exclude/include syntax
+
 ```yaml
 # ❌ WRONG - Invalid exclude syntax
-strategy:
-  matrix:
-    os: [ubuntu-latest, macos-latest, windows-latest]
-    node-version: ['18', '20']
-  exclude:
-    - os: windows-latest, node-version: '18'  # ← Comma not allowed here
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        node-version: ['18', '20']
+      exclude:
+        - os: windows-latest, node-version: '18'  # ← Comma not allowed here
 
 # ✅ CORRECT - Proper exclude syntax
-strategy:
-  matrix:
-    os: [ubuntu-latest, macos-latest, windows-latest]
-    node-version: ['18', '20']
-  exclude:
-    - os: windows-latest
-      node-version: '18'
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        node-version: ['18', '20']
+      exclude:
+        - os: windows-latest
+          node-version: '18'
 
 # ✅ Using include for specific combinations
-strategy:
-  matrix:
-    os: [ubuntu-latest, macos-latest]
-    include:
-      - os: windows-latest
-        node-version: '20'  # ← Only windows + node 20
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        include:
+          - os: windows-latest
+            node-version: '20'  # ← Only windows + node 20
 ```
+
 **Error message:** Workflow fails to parse during validation phase.
 **Fix:** `exclude` and `include` use YAML list syntax with separate lines for each property.
 
 #### Cartesian product explosion
+
 ```yaml
 # ❌ WRONG - Creates 4 × 3 × 2 × 5 = 120 jobs unexpectedly
-strategy:
-  matrix:
-    os: [ubuntu-latest, macos-latest, windows-latest, linux-arm64]
-    node-version: ['16', '18', '20']
-    npm-version: ['8', '9']
-    python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
-    # This is excessive and wastes CI minutes
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest, linux-arm64]
+        node-version: ['16', '18', '20']
+        npm-version: ['8', '9']
+        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
+        # This is excessive and wastes CI minutes
 
 # ✅ CORRECT - Use include for specific combinations
-strategy:
-  matrix:
-    include:
-      - os: ubuntu-latest
-        node-version: '20'
-        npm-version: '9'
-      - os: macos-latest
-        node-version: '20'
-        npm-version: '9'
-      - os: windows-latest
-        node-version: '18'
-        npm-version: '8'
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            node-version: '20'
+            npm-version: '9'
+          - os: macos-latest
+            node-version: '20'
+            npm-version: '9'
+          - os: windows-latest
+            node-version: '18'
+            npm-version: '8'
 ```
+
 **Error message:** None, but suddenly your CI spend quadruples.
 **Fix:** Use `include` to define specific combinations instead of letting matrix create a Cartesian product.
 
@@ -644,12 +682,13 @@ strategy:
 **Critical Issues:**
 
 #### Stale cache causing repeated failures
+
 ```yaml
 # ❌ WRONG - Cache key doesn't change, stale deps stay cached
 - uses: actions/cache@v3
   with:
     path: node_modules
-    key: deps-${{ runner.os }}  # ← Never changes!
+    key: deps-${{ runner.os }} # ← Never changes!
     restore-keys: |
       deps-${{ runner.os }}
 
@@ -661,38 +700,42 @@ strategy:
     restore-keys: |
       deps-${{ runner.os }}-
 ```
+
 **Error message:** Build passes locally but fails in CI with cryptic module errors.
 **Fix:** Always include a hash of your dependency lock file in the cache key: `${{ hashFiles('**/package-lock.json') }}` for npm, `${{ hashFiles('**/requirements.txt') }}` for pip.
 
 #### Incorrect cache path for language runtimes
+
 ```yaml
 # ❌ WRONG - Caching wrong path, cache misses happen
 - name: Setup Node
   uses: actions/setup-node@v4
   with:
-    node-version: '20.x'
+    node-version: "20.x"
 - uses: actions/cache@v3
   with:
-    path: /tmp/node_modules  # ← Wrong path!
+    path: /tmp/node_modules # ← Wrong path!
     key: deps-${{ hashFiles('package-lock.json') }}
 
 # ✅ CORRECT - Let action handle caching, or use right path
 - name: Setup Node
   uses: actions/setup-node@v4
   with:
-    node-version: '20.x'
-    cache: 'npm'  # ← Let the action handle caching
-    
+    node-version: "20.x"
+    cache: "npm" # ← Let the action handle caching
+
 # OR if manual caching:
 - uses: actions/cache@v3
   with:
-    path: ~/.npm  # ← Correct npm cache location
+    path: ~/.npm # ← Correct npm cache location
     key: npm-${{ hashFiles('package-lock.json') }}
 ```
+
 **Error message:** Workflow runs slowly, repeatedly downloading dependencies.
 **Fix:** Use the built-in `cache:` parameter in `setup-node@v4`, or cache the language runtime's official cache directory (e.g., `~/.npm`, `~/.pip-cache`).
 
 #### Cache invalidation race conditions
+
 ```yaml
 # ❌ WRONG - Multiple branches writing to same cache
 branches:
@@ -720,10 +763,12 @@ jobs:
       build-refs/heads/main-
       build-refs/heads/develop-
 ```
+
 **Error message:** Mysterious test failures after merging (cache was poisoned from other branch).
 **Fix:** Include `${{ github.ref }}` in cache key to isolate per-branch caches, or use read-only mode on non-main branches.
 
 #### Docker layer cache not preserved
+
 ```yaml
 # ❌ WRONG - Rebuilds every layer despite cache-from
 - uses: docker/build-push-action@v5
@@ -742,6 +787,7 @@ jobs:
     cache-from: type=gha
     cache-to: type=gha,mode=max
 ```
+
 **Error message:** Docker builds are extremely slow despite local caching working fine.
 **Fix:** Always include `cache-from: type=gha` and `cache-to: type=gha,mode=max` in `docker/build-push-action` to cache layers across runs.
 

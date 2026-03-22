@@ -1,6 +1,6 @@
 ---
 name: llm-advisor
-description: Consult other LLMs (GPT-5.2, GPT-5, Gemini 3) for second opinions on complex bugs, hard problems, planning, and architecture decisions. Use proactively when stuck for >15 minutes or facing complex debugging. Use when user says "ask Gemini/GPT/Claude about X" or "get a second opinion".
+description: "Consult other LLMs (GPT-5.2, GPT-5, Gemini 3) for second opinions on complex bugs, hard problems, planning, and architecture decisions. Use proactively when stuck for 15+ minutes or facing complex debugging. Use when user says 'ask Gemini/GPT/Claude about X' or 'get a second opinion'."
 ---
 
 # LLM Advisor
