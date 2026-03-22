@@ -148,7 +148,7 @@ Photo Editor Photo Filter Photo Effects Photo Editor App
 
 **✅ Good Example (iOS Subtitle):**
 ```
-Professional photo editing, simplified
+Professional photo editing
 ```
 
 **Why it fails:**
@@ -181,14 +181,13 @@ Professional photo editing, simplified
 - "One-click background removal-no manual selection needed"
 - "AI-powered portrait retouching in 3 taps"
 - "Batch edit 100 photos with one template"
-- "Remove objects without using expensive software like Photoshop"
+- "Remove objects from photos—no expensive subscriptions needed"
 ```
 
 **Why it matters:**
 - Generic language applies to 50+ competitors; users skip it
 - Specific claims signal you understand their workflow
 - Specificity = trustworthiness; vague = greenwashing
-- Good example contrasts against alternatives (Photoshop) users know
 
 **What to do instead:**
 - **Lead with outcome + mechanism**: "Auto-remove backgrounds in 2 seconds" (not "fast")
@@ -210,26 +209,26 @@ Professional photo editing, simplified
 | Feature Bullets | N/A | 80 chars each | ✂️ Truncates at 50 on mobile |
 | Promotional Text | 170 chars | N/A | ✂️ Truncates at 85 on mobile |
 
-**❌ Bad Example (iOS Subtitle - 40 chars, exceeds 30-char limit):**
+**❌ Bad Example (iOS Subtitle - 42 chars, exceeds 30-char limit):**
 ```
 Professional photo editing, now simplified
 ```
 **Displays as:** "Professional photo editing, now si..." (truncated mid-word)
 
-**✅ Good Example (iOS Subtitle - 27 chars, fits perfectly):**
+**✅ Good Example (iOS Subtitle - 26 chars, fits perfectly):**
 ```
 Professional photo editing
 ```
 
-**❌ Bad Example (Google Play Feature Bullet - 95 chars, exceeds 80-char limit):**
+**❌ Bad Example (Google Play Feature Bullet - 93 chars, exceeds 80-char limit):**
 ```
 Automatically remove backgrounds from any photo without manual selection or complicated tools
 ```
 **Displays as:** "Automatically remove backgrounds from any photo without manual selection or..." (incomplete thought)
 
-**✅ Good Example (Google Play Feature Bullet - 78 chars, fits with room):**
+**✅ Good Example (Google Play Feature Bullet - 61 chars, fits with room):**
 ```
-Auto-remove backgrounds in seconds-no manual selection needed
+Auto-remove backgrounds in seconds—no manual selection needed
 ```
 
 **What to do instead:**
@@ -379,7 +378,7 @@ python scripts/check_app_store_limits.py input.json
 3. Find the contrast: "What do users do today that sucks?"
 4. Example transform:
    - Before: "Easy photo editing for everyone"
-   - After: "Remove backgrounds in 2 taps—no Photoshop subscription"
+   - After: "Remove backgrounds in 2 taps—no expensive subscription"
 
 ### Issue: Unclear Which Deliverables to Produce
 
