@@ -60,7 +60,7 @@ Once you've completed all batches and your partner approves, move to Step 5 (Com
 
 ### Step 5: Complete Development
 
-After all tasks complete and verified, use the finishing-a-development-branch skill to wrap up. This skill handles the final verification and merge ceremony that you shouldn't do ad-hoc — it ensures tests pass, handles edge cases around main/master branches, and walks through proper cleanup.
+After all tasks complete and verified, use the superpowers:finishing-a-development-branch skill to wrap up. This skill handles the final verification and merge ceremony that you shouldn't do ad-hoc — it ensures tests pass, handles edge cases around main/master branches, and walks through proper cleanup.
 
 - Announce: "I'm using the superpowers:finishing-a-development-branch skill to complete this work."
 - Follow that skill to verify tests, present options, execute choice

@@ -259,7 +259,7 @@ If any of these is unclear, redesign.
 - Matte: Easier to read, more premium feel
 - Gloss: Vibrant images, but glare issues
 - Uncoated: Authentic, writeable, eco-friendly perception
-- Heavy stock (14pt+): Premium feel, stands out in mail stack
+- REPLACED
 
 ### Postcard Design Specifics
 
