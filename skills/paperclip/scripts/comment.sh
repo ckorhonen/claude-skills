@@ -30,16 +30,21 @@ else
   ISSUE_ID=$(curl -s -H "Authorization: Bearer $TOKEN" \
     -H "Content-Type: application/json" \
     "$API/api/companies/$PAPERCLIP_COMPANY_ID/issues" | \
-    python3 -c "import json,sys; issues=json.load(sys.stdin); matches=[i['id'] for i in issues if i['identifier']=='${IDENTIFIER}']; print(matches[0] if matches else '')")
+    IDENTIFIER="$IDENTIFIER" python3 -c "
+import json, sys, os
+issues = json.load(sys.stdin)
+matches = [i['id'] for i in issues if i['identifier'] == os.environ['IDENTIFIER']]
+print(matches[0] if matches else '')
+")
 
   if [ -z "$ISSUE_ID" ]; then
     echo "Issue $IDENTIFIER not found"
     exit 1
   fi
 
-  PAYLOAD="{\"body\": $(python3 -c "import json; print(json.dumps('$BODY'))")}"
+  PAYLOAD=$(COMMENT_BODY="$BODY" python3 -c "import json,os; print(json.dumps({'body': os.environ['COMMENT_BODY']}))")
   if [ -n "$AGENT_ID" ]; then
-    PAYLOAD="{\"body\": $(python3 -c "import json; print(json.dumps('$BODY'))"), \"agentId\": \"$AGENT_ID\"}"
+    PAYLOAD=$(COMMENT_BODY="$BODY" AGENT_ID="$AGENT_ID" python3 -c "import json,os; print(json.dumps({'body': os.environ['COMMENT_BODY'], 'agentId': os.environ['AGENT_ID']}))")
   fi
 
   curl -s -X POST -H "Authorization: Bearer $TOKEN" \
