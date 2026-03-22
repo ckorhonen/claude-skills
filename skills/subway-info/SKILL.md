@@ -349,8 +349,8 @@ const userTime = etTime.toLocaleString('en-US', { timeZone: userTz });
 - Some lines have modified service on nights/weekends that predictions don't reflect clearly
 
 **How to Detect & Fix:**
-```bash
-# Check if today is a holiday or weekend
+```javascript
+// Check if today is a holiday or weekend
 const today = new Date();
 const dayOfWeek = today.getDay(); // 0 = Sunday, 6 = Saturday
 const holidays = ["2026-01-01", "2026-07-04", "2026-12-25"]; // NYD, July 4, Xmas
@@ -411,12 +411,12 @@ curl -s -X POST https://subwayinfo.nyc/api/arrivals \
   -w "\nHTTP Status: %{http_code}\n"
 
 # If 429: Implement exponential backoff
-function fetchWithRetry(url, maxRetries = 3) {
+async function fetchWithRetry(url, maxRetries = 3) {
   for (let i = 0; i < maxRetries; i++) {
-    const response = fetch(url);
+    const response = await fetch(url);
     if (response.status !== 429) return response;
-    const retryAfter = response.headers.get('Retry-After') || (2 ** i); // seconds
-    sleep(retryAfter * 1000);
+    const retryAfter = response.headers.get('Retry-After') || (2 ** i);
+    await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
   }
   throw new Error("Rate limited after retries");
 }
