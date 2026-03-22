@@ -23,7 +23,7 @@ This applies to every project, including simple ones. A todo list, single-functi
 
 ## Anti-Pattern: "This Is Too Simple To Need A Design"
 
-"Simple" projects are where unexamined assumptions cause the most wasted work. The design can be short (a few sentences for truly simple projects), but presenting it and getting approval is essential. This small friction upfront prevents larger misalignment later.
+See Common Pitfall 1 below for the detailed failure mode and prevention steps.
 
 ## Workflow
 
@@ -113,7 +113,7 @@ digraph brainstorming {
 3. Propose 3 approaches: CSS variables, Tailwind dark: classes, or theme provider
 4. Present design sections: color palette, component updates, storage strategy
 5. Get approval on each section
-6. Write design doc to `docs/plans/2026-03-20-dark-mode-design.md`
+6. Write design doc to `docs/plans/YYYY-MM-DD-dark-mode-design.md`
 7. Invoke writing-plans skill
 
 **Expected output:** Validated design document + transition to planning
