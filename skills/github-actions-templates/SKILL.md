@@ -412,27 +412,25 @@ Line 2"
 
 #### Accessing secrets in non-secret contexts
 ```yaml
-# ❌ WRONG - Secrets not available in expressions before job runs
-env:
-  MESSAGE: ${{ secrets.MY_SECRET }}  # ← Undefined!
-
-# ❌ WRONG - Secrets masked in logs but not available here
+# ❌ WRONG - Secrets not available in if: conditionals
 if: ${{ secrets.DEPLOY_KEY != '' }}
 
-# ✅ CORRECT - Pass secret to step where it's needed
+# ✅ CORRECT - Secrets work in env: blocks at job and step level
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      MESSAGE: ${{ secrets.MY_SECRET }}  # ← Works at job level
     steps:
     - name: Deploy
       env:
-        DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
+        DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}  # ← Works at step level
       run: |
         # Now DEPLOY_KEY is available here
         ./deploy.sh
 ```
-**Error message:** Secret appears as `***` (masked) but is actually empty/undefined.
-**Fix:** Define secrets at the step level where they're used, not at job level. Never use secrets in `if:` conditions.
+**Error message:** Secret appears as `***` (masked) but is actually empty/undefined when used in `if:` conditions.
+**Fix:** Use secrets in `env:` blocks at job or step level. Never use secrets in `if:` conditions — they are not available there.
 
 #### Forgetting to mark outputs as sensitive
 ```yaml
@@ -551,26 +549,24 @@ jobs:
 #### Undefined matrix context in steps
 ```yaml
 # ❌ WRONG - Using matrix variables that don't exist
-strategy:
-  matrix:
-    os: [ubuntu-latest, macos-latest]
-    # No 'version' defined here
-
 jobs:
   build:
     runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        # No 'version' defined here
     steps:
     - run: echo "Version is ${{ matrix.version }}"  # ← Empty!
 
 # ✅ CORRECT - Define all matrix variables used
-strategy:
-  matrix:
-    os: [ubuntu-latest, macos-latest]
-    version: ['1.0', '2.0']
-    
 jobs:
   build:
     runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        version: ['1.0', '2.0']
     steps:
     - run: echo "Building for ${{ matrix.os }} v${{ matrix.version }}"
 ```
@@ -580,29 +576,38 @@ jobs:
 #### Broken exclude/include syntax
 ```yaml
 # ❌ WRONG - Invalid exclude syntax
-strategy:
-  matrix:
-    os: [ubuntu-latest, macos-latest, windows-latest]
-    node-version: ['18', '20']
-  exclude:
-    - os: windows-latest, node-version: '18'  # ← Comma not allowed here
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        node-version: ['18', '20']
+      exclude:
+        - os: windows-latest, node-version: '18'  # ← Comma not allowed here
 
 # ✅ CORRECT - Proper exclude syntax
-strategy:
-  matrix:
-    os: [ubuntu-latest, macos-latest, windows-latest]
-    node-version: ['18', '20']
-  exclude:
-    - os: windows-latest
-      node-version: '18'
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        node-version: ['18', '20']
+      exclude:
+        - os: windows-latest
+          node-version: '18'
 
 # ✅ Using include for specific combinations
-strategy:
-  matrix:
-    os: [ubuntu-latest, macos-latest]
-    include:
-      - os: windows-latest
-        node-version: '20'  # ← Only windows + node 20
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        include:
+          - os: windows-latest
+            node-version: '20'  # ← Only windows + node 20
 ```
 **Error message:** Workflow fails to parse during validation phase.
 **Fix:** `exclude` and `include` use YAML list syntax with separate lines for each property.
@@ -610,27 +615,33 @@ strategy:
 #### Cartesian product explosion
 ```yaml
 # ❌ WRONG - Creates 4 × 3 × 2 × 5 = 120 jobs unexpectedly
-strategy:
-  matrix:
-    os: [ubuntu-latest, macos-latest, windows-latest, linux-arm64]
-    node-version: ['16', '18', '20']
-    npm-version: ['8', '9']
-    python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
-    # This is excessive and wastes CI minutes
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest, linux-arm64]
+        node-version: ['16', '18', '20']
+        npm-version: ['8', '9']
+        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
+        # This is excessive and wastes CI minutes
 
 # ✅ CORRECT - Use include for specific combinations
-strategy:
-  matrix:
-    include:
-      - os: ubuntu-latest
-        node-version: '20'
-        npm-version: '9'
-      - os: macos-latest
-        node-version: '20'
-        npm-version: '9'
-      - os: windows-latest
-        node-version: '18'
-        npm-version: '8'
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            node-version: '20'
+            npm-version: '9'
+          - os: macos-latest
+            node-version: '20'
+            npm-version: '9'
+          - os: windows-latest
+            node-version: '18'
+            npm-version: '8'
 ```
 **Error message:** None, but suddenly your CI spend quadruples.
 **Fix:** Use `include` to define specific combinations instead of letting matrix create a Cartesian product.
@@ -682,7 +693,7 @@ strategy:
   with:
     node-version: '20.x'
     cache: 'npm'  # ← Let the action handle caching
-    
+
 # OR if manual caching:
 - uses: actions/cache@v3
   with:
