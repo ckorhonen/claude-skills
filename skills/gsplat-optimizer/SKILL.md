@@ -135,9 +135,10 @@ tail -f training.log | grep -E "loss|nan|inf"
 
 # Check gradient magnitudes
 python -c "
-import ply
-ply_data = ply.read('scene.ply')
-scales = ply_data['vertex']['scale_0']
+import numpy as np
+from plyfile import PlyData
+ply_data = PlyData.read('scene.ply')
+scales = ply_data['vertex']['scale_0'].data
 print(f'Scale range: {scales.min():.6f} to {scales.max():.6f}')
 print(f'Any NaN: {np.isnan(scales).any()}')
 "
@@ -166,7 +167,7 @@ print(f'Any NaN: {np.isnan(scales).any()}')
 # Estimate memory footprint
 python << 'EOF'
 num_gaussians = 5_000_000  # Your count
-bytes_per_gaussian = 32  # 3 pos (12) + scale (12) + rot (4) + opacity (1) + SH coeffs (3)
+bytes_per_gaussian = 56  # pos (12) + scale (12) + rot quaternion (16) + opacity (4) + SH DC (12)
 total_mb = (num_gaussians * bytes_per_gaussian) / (1024 ** 2)
 print(f"Est. memory: {total_mb:.1f} MB")
 print(f"Safe for iPhone A15: {total_mb < 2000}")  # Leave headroom for app
