@@ -257,7 +257,7 @@ If you catch yourself thinking:
 
 ## Common Pitfalls
 
-These are anti-patterns observed in debugging practice. Recognize them and correct course immediately.
+These are anti-patterns observed in debugging practice. Recognize them and correct course immediately. See also: [Red Flags](#red-flags---stop-and-follow-process) and [Common Rationalizations](#common-rationalizations) for related guidance.
 
 ### 1. Jumping to Solutions Before Reproducing (Premature Fixes)
 
@@ -370,7 +370,7 @@ Weeks later: "Wait, does this still happen? I don't remember how to trigger it"
 **Recovery:**
 - Document reproduction steps NOW
 - Don't claim fix is done until you've re-run exact steps
-- If you can't reproduce it anymore, reproduction steps proved the fix works
+- If you documented reproduction steps and can no longer trigger the bug after the fix, that confirms the fix works
 
 ---
 
