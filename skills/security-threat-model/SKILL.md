@@ -64,7 +64,7 @@ Deliver an actionable AppSec-grade threat model that is specific to the reposito
 - Confirm runtime vs CI/dev separation.
 - Confirm user clarifications (or explicit non-responses) are reflected.
 - Confirm assumptions and open questions are explicit.
-- Confirm that the format of the report matches closely the required output format defined in prompt template: `references/prompt-template.md`
+- Confirm a maintenance plan (versioning, review cadence, update triggers, ownership) is included in the deliverable- Confirm that the format of the report matches closely the required output format defined in prompt template: `references/prompt-template.md`
 - Write the final Markdown to a file named `<repo-or-dir-name>-threat-model.md` (use the basename of the repo root, or the in-scope directory if you were asked to model a subpath).
 
 
@@ -86,7 +86,7 @@ These are the most frequent failure modes encountered when threat modeling. Avoi
 **Example of bad:** "Attacker compromises the system"  
 **Example of good:** "A disgruntled employee with internal API access steals PII to sell on a darknet market. Likelihood: medium (few employees have access; audit logs exist but aren't monitored in real-time)"
 
-**How to avoid:** Define 2-3 realistic attacker profiles for your system:
+**How to avoid:** Define 3-4 realistic attacker profiles for your system:
 - External unauthenticated attacker
 - Authenticated user (internal, customer, or partner)
 - Malicious insider with specific privilege level
