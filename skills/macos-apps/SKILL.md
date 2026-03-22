@@ -1,6 +1,6 @@
 ---
 name: build-macos-apps
-description: Build professional native macOS apps in Swift with SwiftUI and AppKit. Full lifecycle - build, debug, test, optimize, ship. CLI-only, no Xcode.
+description: "Build professional native macOS apps in Swift with SwiftUI and AppKit. Full lifecycle - build, debug, test, optimize, ship. CLI-only, no Xcode. Use when asked to: create macOS apps, build Swift apps, develop SwiftUI interfaces, fix macOS app issues, add macOS app features, or when user says 'build a Mac app', 'create a Swift project', 'develop for macOS'."
 ---
 
 <essential_principles>
@@ -139,7 +139,34 @@ All in `references/`:
 **System:** system-apis, app-extensions
 **Development:** project-scaffolding, cli-workflow, cli-observability, testing-tdd, testing-debugging
 **Polish:** design-system, macos-polish, security-code-signing
+
+**Pitfalls & Debugging:** common-pitfalls
 </reference_index>
+
+<common_pitfalls>
+## Common Pitfalls
+
+macOS app development has real gotchas that block shipping. These are the failure modes you'll encounter:
+
+### High-Severity Issues
+- **Sandboxing violations** — Missing entitlements (keychain, file access, network) cause silent failures or App Store rejection
+- **Code signing failures** — Expired provisioning profiles, mismatched bundle identifiers, missing certificates in keychain
+- **App Store rejections** — Private API usage, incomplete metadata, missing privacy policies
+- **SwiftUI state bugs** — @Bindable not used with @Model objects, mutable class views don't update, NavigationStack doesn't navigate
+- **macOS version incompatibility** — Using APIs that don't exist on your target macOS, deprecated APIs, availability guard misses
+
+### What to Do
+
+**Before shipping:** Read `common-pitfalls.md`. It documents each failure mode with:
+- The exact error message or symptom you'll see
+- Why it happens
+- The code fix or configuration change
+- How to verify it's fixed
+
+**When something breaks:** Search `common-pitfalls.md` for your error message. Most are there.
+
+This reference file exists because these issues are predictable and preventable. Use it.
+</common_pitfalls>
 
 <workflows_index>
 ## Workflows

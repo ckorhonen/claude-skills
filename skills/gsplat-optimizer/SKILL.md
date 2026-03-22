@@ -95,6 +95,163 @@ See [references/compression.md](references/compression.md) for details.
 
 See [references/metal-profiling.md](references/metal-profiling.md) for details.
 
+## Common Pitfalls
+
+### 1. Point Cloud Density Mismatch
+
+**Problem:** Gaussian count doesn't match your scene complexity, causing either visual artifacts or wasted GPU resources.
+
+- **Too sparse (undersampling):** Visible gaps, blockiness, loss of fine details
+- **Too dense (oversampling):** Exceeds device budget, causes frame drops, GPU thrashing
+
+**Debugging:**
+```bash
+# Analyze gaussian distribution
+python ~/.claude/skills/gsplat-optimizer/scripts/analyze_splat.py scene.ply --histogram
+
+# Check against device budget
+# Compare total_gaussians vs. device_max in the output table
+```
+
+**Strategy:**
+- Start with device budget from Step 2 (e.g., 4M for iPhone)
+- If scene exceeds budget by >20%, apply pruning before training
+- If visual quality drops too much after pruning, consider LOD or chunking
+- Use importance-weighted sampling (LODGE) to remove low-contribution gaussians, not just opaque ones
+
+---
+
+### 2. Training Instability (Gradient Explosions, Divergence)
+
+**Problem:** During optimization (if fine-tuning on device), gaussian parameters diverge, causing:
+- Loss suddenly jumps to NaN
+- Gaussians disappear or explode in scale
+- Model becomes unrecoverable mid-session
+
+**Debugging:**
+```bash
+# Monitor loss during training
+tail -f training.log | grep -E "loss|nan|inf"
+
+# Check gradient magnitudes
+python -c "
+import numpy as np
+from plyfile import PlyData
+ply_data = PlyData.read('scene.ply')
+scales = ply_data['vertex']['scale_0'].data
+print(f'Scale range: {scales.min():.6f} to {scales.max():.6f}')
+print(f'Any NaN: {np.isnan(scales).any()}')
+"
+```
+
+**Strategy:**
+- **Gradient clipping:** Cap gradient updates to ±0.1 scale per step
+- **Learning rate decay:** Start at 1e-4, decay by 0.95 every epoch
+- **Loss regularization:** Add L2 penalty on scale magnitudes to prevent explosions
+- **Checkpoint early:** Save state every 10 iterations; rollback if loss spikes
+- **Freeze covariance:** If converged, stop updating scale/rotation after 80% of training
+- **For device training:** Reduce batch size or resolution if instability persists
+
+---
+
+### 3. Memory Limitations (OOM Errors on Large Scenes)
+
+**Problem:** Scene exceeds available unified memory, causing allocation failures or GPU stalls.
+
+- iPhone: 4–6GB shared between app + GPU
+- iPad Pro: 8–16GB shared
+- Vision Pro: 16GB (but stereo doubles gaussian count)
+
+**Debugging:**
+```bash
+# Estimate memory footprint
+python << 'EOF'
+num_gaussians = 5_000_000  # Your count
+bytes_per_gaussian = 56  # pos (12) + scale (12) + rot quaternion (16) + opacity (4) + SH DC (12)
+total_mb = (num_gaussians * bytes_per_gaussian) / (1024 ** 2)
+print(f"Est. memory: {total_mb:.1f} MB")
+print(f"Safe for iPhone A15: {total_mb < 2000}")  # Leave headroom for app
+EOF
+
+# Monitor live memory in Xcode
+# Memory graph + Allocations instrument during scene load
+```
+
+**Strategy:**
+- **Chunking for large scenes:** Break into 1–4M gaussian chunks, stream based on camera distance
+- **Quantization:** Store gaussians in FP16 instead of FP32 (2x memory reduction)
+- **Pruning first:** Remove <0.01 opacity or sub-pixel gaussians before transfer to device
+- **Lazy loading:** Keep only active LOD level in memory; unload far chunks
+- **Vision Pro consideration:** Dual-eye rendering = 2x gaussian count; cap at 4M per eye
+
+---
+
+### 4. Quality/Speed Trade-Offs (Over-Optimization for One Metric)
+
+**Problem:** Optimizing heavily for one metric breaks another:
+- **Maximize FPS → visual artifacts:** Over-pruning removes important geometry
+- **Maximize quality → frame drops:** Too many gaussians for target device
+- **Minimize memory → banding/posterization:** Excessive quantization or LOD culling
+
+**Debugging:**
+```bash
+# Profile before/after each change
+python << 'EOF'
+metrics = {
+  "original": {"fps": 60, "gaussians": 5_000_000, "artifacts": "none"},
+  "after_pruning": {"fps": 58, "gaussians": 3_500_000, "artifacts": "block edges visible"},
+}
+for label, m in metrics.items():
+    print(f"{label}: {m['fps']}fps, {m['gaussians']/1e6:.1f}M, {m['artifacts']}")
+EOF
+```
+
+**Strategy:**
+- **Define priority:** Is this device speed-critical (AR, real-time) or quality-focused (preview)?
+- **Measure baseline:** Profile original unoptimized scene first
+- **Iterate incrementally:** Apply one optimization (pruning OR compression OR LOD), measure, decide
+- **Preserve quality metrics:** Keep PSNR/SSIM scores; stop pruning if quality drops >1dB
+- **Target range:** Aim for 50–60fps headroom (don't max out at exactly 60fps; device will throttle)
+
+---
+
+### 5. Real-Time Rendering Failures (Frame Drops, Shader Compilation)
+
+**Problem:** Rendering pipeline stalls despite low gaussian count:
+- First frame (cold start): 2–5s delay while shaders compile
+- Mid-scene: Frame drops spike when new LOD levels load
+- Smooth playback → stuttering after 30–60s
+
+**Debugging:**
+```bash
+# Capture Metal frame statistics
+# In Xcode: Product > Scheme > Edit > Run > Diagnostics
+# Enable: Metal API Validation, GPU Frame Capture
+
+# Check shader compilation time
+python ~/.claude/skills/gsplat-optimizer/scripts/metal_profile.py \
+  --capture-shader-compile \
+  --target iphone14
+
+# Monitor frame time distribution
+tail -f xcode.log | grep -E "frame_time|stutter"
+```
+
+**Strategy:**
+- **Pre-warm shader cache:** Compile all function variants on first load (avoid runtime jank)
+- **Limit LOD transitions:** If using multiple LOD levels, cap transitions to 2 per frame
+- **Asynchronous streaming:** Load new geometry chunks on background thread, upload in-between frames
+- **Device-specific tuning:** 
+  - iPhone: Keep draw calls < 50, geometry per call < 500K gaussians
+  - Mac: More generous; aim for < 2M gaussians per draw call
+  - Vision Pro: Account for stereo; effective capacity is half the budget
+- **Profile regimen:** Run Metal System Trace before and after each optimization; track:
+  - GPU utilization (target 70–85%)
+  - Shader time (target <10ms)
+  - Memory bandwidth (target <50GB/s)
+
+---
+
 ## Key Metrics
 
 | Metric | Target | How to Measure |

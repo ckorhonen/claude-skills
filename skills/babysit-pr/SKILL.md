@@ -1,6 +1,6 @@
 ---
 name: babysit-pr
-description: Create, monitor, and shepherd a GitHub pull request end-to-end: respect repo PR templates, watch CI and reviews, fix branch-related failures, address valid comments, and validate post-merge deployment when possible.
+description: "Create, monitor, and shepherd a GitHub pull request end-to-end: respect repo PR templates, watch CI and reviews, fix branch-related failures, address valid comments, and validate post-merge deployment when possible."
 ---
 
 # PR Lifecycle Operator
@@ -16,6 +16,24 @@ Terminal outcomes:
 - A blocker requires user help: ambiguous product intent, permissions, unrelated dirty worktree, external-only outage, or missing deployment visibility.
 
 Do not stop at "PR created" or "CI is green once." Keep following the PR until one of the terminal outcomes is true.
+
+## Common Failure Modes
+
+These gotchas appear during real PR automation and require proactive handling:
+
+**Watcher Script Exits Silently (Template Resolution)**
+The watcher can exit unexpectedly if PR template resolution fails during preflight. Root cause: `resolve_pr_template.py` may fail to parse custom template syntax, or template file is unreadable. Mitigation: always run the resolver in `--json` mode first to validate template before starting the watcher. If resolution fails, fall back to the bundled default template at `assets/default_pr_template.md`.
+
+**Multiple Watchers on Same PR (Duplicate Comments)**
+Running multiple `gh_pr_watch.py` instances for the same PR causes duplicate comment processing and can result in duplicate bot comments or conflicting retry actions. This typically happens when the watcher is restarted without properly stopping the previous session. Mitigation: use one watcher session per PR. Verify no orphaned watcher processes exist before starting: `ps aux | grep gh_pr_watch`. Kill any stale sessions before resuming.
+
+**CI Retry Logic Triggers on Non-Flaky Failures (Quota Waste)**
+The retry logic may consume the CI retry budget on failures that are not actually transient (e.g., legitimate test failures from branch-specific issues). This wastes quota and can block progress on legitimate issues. Mitigation: always inspect CI logs with `gh run view <run-id> --log-failed` before retrying. Confirm the failure is truly flaky or unrelated to branch changes. Apply the heuristics in `references/heuristics.md` strictly before calling `--retry-failed-now`.
+
+**Review Score Extraction Fails with Markdown Formatting**
+When reviewers use markdown formatting in their score phrases (e.g., `**4/5** stars` or `` `4 out of 5` ``), the review score extraction regex may fail to match. This results in the watcher missing explicit scores and potentially merging PRs prematurely despite unfinished reviewer feedback. Mitigation: the score extractor looks for patterns like `5/5` and `5 out of 5`. If a reviewer uses markdown around the score, manually extract the numeric rating and document it in the PR thread before proceeding.
+
+See references in each workflow section below for prevention strategies.
 
 ## Defaults
 
@@ -39,6 +57,8 @@ Use the resolver script first:
 ```bash
 python3 skills/babysit-pr/scripts/resolve_pr_template.py --json
 ```
+
+⚠️ **Related gotcha:** See "Watcher Script Exits Silently (Template Resolution)" under [Common Failure Modes](#common-failure-modes). Always validate template resolution before starting the watcher.
 
 Rules:
 
@@ -72,6 +92,8 @@ The watcher emits snapshots and recommended actions. Start with:
 python3 skills/babysit-pr/scripts/gh_pr_watch.py --pr auto --watch
 ```
 
+⚠️ **Related gotchas:** See [Common Failure Modes](#common-failure-modes) for "Multiple Watchers on Same PR" and "Watcher Script Exits Silently." Ensure no stale watcher processes are running before starting, and verify template resolution completes cleanly.
+
 Key actions:
 
 - `process_review_comment`: inspect the new comment or review and decide whether it is valid, relevant, and actionable on the current branch.
@@ -85,6 +107,8 @@ Key actions:
 ## CI Failure Policy
 
 Use `references/heuristics.md` for the classification checklist.
+
+⚠️ **Related gotcha:** See "CI Retry Logic Triggers on Non-Flaky Failures" under [Common Failure Modes](#common-failure-modes). Always inspect logs before retrying to avoid wasting quota on legitimate failures.
 
 Default commands:
 
@@ -124,6 +148,8 @@ Ignore or escalate feedback when it is:
 
 The watcher now extracts explicit score phrases such as `5/5` and `5 out of 5` from trusted comments and reviews.
 
+⚠️ **Related gotcha:** See "Review Score Extraction Fails with Markdown Formatting" under [Common Failure Modes](#common-failure-modes). If reviewers use markdown around scores, manually extract ratings before proceeding.
+
 Rules:
 
 - If a reviewer gives an explicit score below the maximum, treat that as unfinished work even if the PR is technically mergeable.
@@ -134,7 +160,7 @@ Rules:
 
 - Work only on the PR head branch.
 - Avoid destructive git actions.
-- Do not run multiple watcher processes for the same PR.
+- Do not run multiple watcher processes for the same PR. (See [Common Failure Modes](#common-failure-modes): "Multiple Watchers on Same PR")
 - If you find unrelated uncommitted worktree changes, stop and ask the user before editing.
 
 ## Post-Merge Deployment Monitoring
