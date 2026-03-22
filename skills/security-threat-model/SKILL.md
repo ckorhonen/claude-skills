@@ -64,7 +64,8 @@ Deliver an actionable AppSec-grade threat model that is specific to the reposito
 - Confirm runtime vs CI/dev separation.
 - Confirm user clarifications (or explicit non-responses) are reflected.
 - Confirm assumptions and open questions are explicit.
-- Confirm a maintenance plan (versioning, review cadence, update triggers, ownership) is included in the deliverable- Confirm that the format of the report matches closely the required output format defined in prompt template: `references/prompt-template.md`
+- Confirm a maintenance plan (versioning, review cadence, update triggers, ownership) is included in the deliverable
+- Confirm that the format of the report matches closely the required output format defined in prompt template: `references/prompt-template.md`
 - Write the final Markdown to a file named `<repo-or-dir-name>-threat-model.md` (use the basename of the repo root, or the in-scope directory if you were asked to model a subpath).
 
 
