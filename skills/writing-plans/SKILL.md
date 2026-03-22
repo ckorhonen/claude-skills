@@ -132,7 +132,7 @@ git commit -m "feat: add specific feature"
 - Target 2-5 minute steps: small enough to verify and commit independently, large enough to be meaningful
 - Group related micro-steps under a single task heading, then break them into numbered steps
 - Each step should produce a git-committable change
-- Use this litmus test: "Can I review this change in one PR and confirm it's correct?"
+- Use this litmus test: "Can I understand and verify this single commit in isolation?"
 
 **Example (bad vs good):**
 ```
@@ -167,7 +167,7 @@ git commit -m "feat: add specific feature"
 - Include negative cases: "Run: `pytest tests/... -v`. Expected: Should fail with 'ValidationError'"
 
 **Example (bad vs good):**
-```
+`````
 ❌ BAD:
   Step 3: Implement the validation function
 
@@ -184,7 +184,7 @@ git commit -m "feat: add specific feature"
   
   Run: `pytest tests/validators/test_email.py::test_valid_email -v`
   Expected: `PASSED test_valid_email`
-```
+`````
 
 ---
 
@@ -238,7 +238,7 @@ git commit -m "feat: add specific feature"
 - If a pattern is specific to this codebase, explain it briefly instead of assuming knowledge
 
 **Example (bad vs good):**
-```
+`````
 ❌ BAD:
   Step 1: Create a handler using the standard pattern
   Step 2: Follow our naming convention for tests
@@ -254,7 +254,7 @@ git commit -m "feat: add specific feature"
   
   Step 1: Create handler in src/handlers/my_handler.py following the pattern above
   Step 2: Create test in tests/handlers/test_my_handler.py. Naming: test_<function_name>_<scenario>
-```
+`````
 
 ---
 
