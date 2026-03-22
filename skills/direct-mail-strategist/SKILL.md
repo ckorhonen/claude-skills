@@ -259,7 +259,7 @@ If any of these is unclear, redesign.
 - Matte: Easier to read, more premium feel
 - Gloss: Vibrant images, but glare issues
 - Uncoated: Authentic, writeable, eco-friendly perception
-- Heavy stock (14pt+): Premium feel, stands out in mail stack
+- 14pt+ for postcards, 80lb+ text weight for letters
 
 ### Postcard Design Specifics
 
@@ -274,7 +274,8 @@ If any of these is unclear, redesign.
 - Promo code prominently displayed
 - QR code (minimum 0.75" square)
 - URL in large, readable type
-- Reserved space for address block
+- Return address in upper-left corner
+- Delivery address in lower-center or lower-right area (per USPS DMM)
 
 ### Letter Package Design
 
@@ -337,7 +338,7 @@ Incremental Lift = (Treatment Conversion Rate - Control Conversion Rate) / Contr
 1. Randomly select 10-20% of your mail list
 2. Exclude them from mailing (but track them)
 3. Compare conversion rates over measurement window
-4. Ensure holdout is statistically significant (minimum 10K)
+4. Ensure holdout is statistically significant (hold out 10-20%, minimum 2,000)
 
 **Matched Market Tests:**
 - For geographic targeting or store-level analysis
@@ -809,7 +810,7 @@ These are the failure modes we see repeatedly in direct mail campaigns—operati
    - Fix: One primary action, maybe one secondary
 
 3. **Weak paper stock**
-   - Fix: 14pt minimum for postcards, quality stock for letters
+   - Fix: 14pt+ for postcards, 80lb+ text weight for letters
 
 4. **Ignoring the address side**
    - Fix: Address side gets seen first—design it
