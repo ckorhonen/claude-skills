@@ -173,6 +173,8 @@ The difference between authentic Evangelion language and generic neon cyberpunk 
 
 The key: Evangelion design is *severe* and *specific* about its choices. It's not "make it look sci-fi;" it's "make every element earn its place."
 
+## Guardrails
+
 - Do not default to purple gradients, glassmorphism, soft blur, or playful spring motion.
 - Do not make every surface glow. Most of the screen should feel matte, dark, and controlled.
 - Do not use Japanese text or franchise symbols as decoration.
