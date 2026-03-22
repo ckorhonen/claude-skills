@@ -105,11 +105,11 @@ The most common UI design failures occur in spacing, color contrast, mobile resp
 
 ### 1. Inconsistent Spacing (Arbitrary Margins, No System)
 
-**Problem:** Using arbitrary pixel values (`ml-3`, `gap-5`, `p-2.5`) instead of Tailwind's spacing scale breaks consistency and makes layouts fragile.
+**Problem:** Using an inconsistent mix of Tailwind spacing values without a deliberate system makes layouts feel incoherent.
 
 ```tsx
-// ❌ WRONG - arbitrary, hard to maintain
-<div className="ml-3 mr-5 pt-2.5">Content</div>
+// ❌ WRONG - arbitrary pixel values, no spacing system
+<div className="ml-[13px] mr-[22px] pt-[7px]">Content</div>
 
 // ✅ CORRECT - use system scales
 <div className="ml-4 mr-4 pt-4">Content</div>
@@ -142,7 +142,7 @@ The most common UI design failures occur in spacing, color contrast, mobile resp
 ```
 
 **Why it fails:**
-- 15% of users have some form of color blindness
+- Approximately 4-5% of users have color blindness, and a broader 15%+ have some form of visual impairment
 - Users on bright displays (phones) can't read low-contrast text
 - Legal liability (WCAG compliance required in many jurisdictions)
 
@@ -171,7 +171,7 @@ The most common UI design failures occur in spacing, color contrast, mobile resp
 </div>
 
 // ✅ CORRECT - hit target size, responsive stack
-<button className="px-4 py-2 md:px-6 md:py-3">Click me</button>
+<button className="px-4 py-3 md:px-6 md:py-3">Click me</button>
 <div className="flex flex-col md:flex-row gap-4">
   <div className="w-full md:w-80">Sidebar</div>
   <div className="flex-1">Content</div>
@@ -185,7 +185,7 @@ The most common UI design failures occur in spacing, color contrast, mobile resp
 
 **Fix:**
 - **Minimum touch target: 44×44px**
-  - Buttons: at least `px-4 py-2` (standard: `px-6 py-3`)
+  - Buttons: at least `px-4 py-3` (standard: `px-6 py-3`)
   - Links: wrap in larger clickable area
 - **Stack on mobile:** Use `flex-col` by default, `md:flex-row` for desktop
 - **Use responsive widths:**
