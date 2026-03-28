@@ -12,13 +12,8 @@ allowed-tools:
   - Read
   - Write
   - Edit
-  - Grep
-  - Glob
-  - WebSearch
-  - WebFetch
-  - Skill
-  - AskUserQuestion
-  - TodoWrite
+  - web_search
+  - web_fetch
 ---
 
 # Continuous Learning Skill
@@ -85,7 +80,7 @@ Before creating the skill, search the web for current information when:
 **When to search:**
 - The topic involves specific technologies, frameworks, or tools
 - You're uncertain about current best practices
-- The solution might have changed after January 2025 (knowledge cutoff)
+- The solution might have changed recently (verify current best practices)
 - There might be official documentation or community standards
 - You want to verify your understanding is current
 
@@ -304,7 +299,7 @@ description: |
   terminal/server logs instead of browser for actual error messages.
 author: Claude Code
 version: 1.0.0
-date: 2024-01-15
+date: 2026-03-28
 ---
 
 # Next.js Server-Side Error Debugging

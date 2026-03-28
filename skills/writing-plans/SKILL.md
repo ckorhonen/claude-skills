@@ -1,6 +1,6 @@
 ---
 name: writing-plans
-description: Use when you have a spec or requirements for a multi-step task, before touching code
+description: Write a comprehensive, bite-sized implementation plan from a spec or design. Use after brainstorming produces an approved design, or when given requirements for a multi-step task before touching code. Produces plans that executing-plans can follow task-by-task with zero ambiguity.
 ---
 
 # Writing Plans
@@ -33,7 +33,7 @@ Assume they are a skilled developer, but know almost nothing about our toolset o
 ```markdown
 # [Feature Name] Implementation Plan
 
-> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
+> **For Claude:** REQUIRED SUB-SKILL: Use the executing-plans skill to implement this plan task-by-task.
 
 **Goal:** [One sentence describing what this builds]
 
@@ -271,10 +271,9 @@ After saving the plan, offer execution choice:
 **Which approach?"**
 
 **If Subagent-Driven chosen:**
-- **REQUIRED SUB-SKILL:** Use superpowers:subagent-driven-development
-- Stay in this session
-- Fresh subagent per task + code review
+- Spawn a subagent per task, review results between tasks, fast iteration
+- Stay in this session and orchestrate
 
 **If Parallel Session chosen:**
-- Guide them to open new session in worktree
-- **REQUIRED SUB-SKILL:** New session uses superpowers:executing-plans
+- Guide them to open new session in the git worktree
+- **REQUIRED SUB-SKILL:** New session uses the executing-plans skill
