@@ -7,7 +7,9 @@ description: Generate images using Google's Gemini API. Use when creating images
 
 ## Overview
 
-Generate images using Google's Gemini API with support for text-to-image generation, image editing, and multi-image reference inputs. Supports both the fast Gemini 2.5 Flash model and the high-quality Gemini 3 Pro model with up to 4K resolution.
+Generate images using Google's Gemini API with support for text-to-image generation, image editing, and multi-image reference inputs. Supports the fast Gemini 2.5 Flash Image model and the high-quality Gemini 3.1 Flash Image model with up to 4K resolution.
+
+> **Model naming note (2026):** Google's image generation models follow a "Nano Banana" branding. `gemini-2.5-flash-image-preview` is "Nano Banana", `gemini-3.1-flash-image-preview` is "Nano Banana 2". These are distinct from the conversational Gemini models. See [models reference](https://ai.google.dev/gemini-api/docs/models).
 
 ## When to Use
 
@@ -78,7 +80,7 @@ Required:
 
 Optional:
   -o, --output PATH         Output file path (default: auto-generated)
-  -m, --model MODEL         Model to use (default: gemini-3-pro-image-preview)
+  -m, --model MODEL         Model to use (default: gemini-3.1-flash-image-preview)
   -a, --aspect-ratio RATIO  Aspect ratio (default: 1:1)
   -s, --size SIZE           Image size: 1K, 2K, 4K (default: 1K, Pro only)
   -i, --input-image PATH    Input image for editing mode
@@ -88,16 +90,19 @@ Optional:
 
 ## Models
 
-| Model | Resolution | Best For |
-|-------|------------|----------|
-| `gemini-3-pro-image-preview` | Up to 4K | Final assets, high quality, professional work |
-| `gemini-2.5-flash-image` | 1024px | Quick iterations, prototyping, batch generation |
+| Model | Resolution | Best For | Nickname |
+|-------|------------|----------|----------|
+| `gemini-3.1-flash-image-preview` | Up to 4K | Latest model, fast + high quality | Nano Banana 2 |
+| `gemini-2.5-flash-image-preview` | Up to 1K | Quick iterations, prototyping, batch generation | Nano Banana |
+| `gemini-3-pro-image-preview` | Up to 4K | Previous-gen high quality fallback | Nano Banana Pro |
 
-The Pro model is used by default. Use the Flash model for faster generation when quality is less critical:
+The `gemini-3.1-flash-image-preview` model is recommended as the default. Use `gemini-2.5-flash-image-preview` for faster/cheaper generation:
 
 ```bash
-python scripts/generate_image.py -p "Quick concept sketch" -m gemini-2.5-flash-image
+python scripts/generate_image.py -p "Quick concept sketch" -m gemini-2.5-flash-image-preview
 ```
+
+> **API usage:** All models use the same `google-genai` SDK with `response_modalities=['Image']` in the config. The models require `GEMINI_API_KEY` and use the `generate_content` endpoint (not a separate images endpoint).
 
 ## Aspect Ratios
 
@@ -345,12 +350,45 @@ Supported formats for input images: PNG, JPEG, WebP
 
 ### Size option not working
 
-The size option (2K, 4K) is only available for `gemini-3-pro-image-preview`. The Flash model always generates 1024px images.
+The size option (2K, 4K) is available for `gemini-3.1-flash-image-preview` and `gemini-3-pro-image-preview`. The `gemini-2.5-flash-image-preview` model generates up to 1024px images.
+
+## Direct API Usage (Python SDK)
+
+If you prefer to call the API directly without the CLI:
+
+```python
+import os
+from google import genai
+from google.genai import types
+from PIL import Image
+from io import BytesIO
+
+client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+
+response = client.models.generate_content(
+    model="gemini-3.1-flash-image-preview",
+    contents="A minimalist app icon for a weather app, blue gradient, white cloud",
+    config=types.GenerateContentConfig(
+        response_modalities=["Image", "Text"],
+        # aspect_ratio and image_size options depend on model support
+    )
+)
+
+for part in response.candidates[0].content.parts:
+    if part.inline_data is not None:
+        image = Image.open(BytesIO(part.inline_data.data))
+        image.save("output.png")
+        print("Saved to output.png")
+    elif part.text:
+        print(part.text)
+```
+
+> **Important:** The `generate_content` endpoint is used for image generation (not a separate images endpoint). Set `response_modalities` to include `"Image"` to enable image output.
 
 ## Best Practices
 
 - **Start simple**: Begin with clear, concise prompts and iterate
-- **Use the right model**: Flash for speed, Pro for quality
+- **Use the right model**: `gemini-2.5-flash-image-preview` for speed, `gemini-3.1-flash-image-preview` for quality + 4K
 - **Match aspect ratio to use case**: 16:9 for banners, 1:1 for icons
 - **Save high-quality versions**: Use 4K when you need detailed assets
 - **Iterate on prompts**: Small changes can significantly affect results

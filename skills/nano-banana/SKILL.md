@@ -1,11 +1,11 @@
 ---
 name: nano-banana
-description: Generate and edit high-quality AI images using Google's Gemini 3.1 Flash Image model (Nano Banana 2) via MCP. Use when user wants to create images, edit photos, generate graphics, or needs visual content with text rendering.
+description: Generate and edit high-quality AI images using Google's Gemini image models (Nano Banana series) via MCP. Use when user wants to create images, edit photos, generate graphics, or needs visual content with text rendering. Supports gemini-3.1-flash-image-preview (Nano Banana 2) and gemini-2.5-flash-image-preview (Nano Banana).
 ---
 
-# Nano Banana 2 - AI Image Generation
+# Nano Banana - AI Image Generation via MCP
 
-Generate stunning 4K images, edit photos, and create graphics with perfect text rendering using Google's latest Gemini 3.1 Flash Image model via MCP.
+Generate stunning 4K images, edit photos, and create graphics with perfect text rendering using Google's Gemini image models via MCP. The default model is `gemini-3.1-flash-image-preview` (Nano Banana 2), launched February 2026.
 
 ## When to Use
 
@@ -83,9 +83,10 @@ Once MCP is configured, these tools become available:
 
 | Model ID | Description |
 |----------|-------------|
-| `gemini-3.1-flash-image-preview` | **Default.** Highest quality, 4K support, best text rendering (Nano Banana 2) |
-| `gemini-3-pro-image-preview` | Previous generation, still high quality |
-| `gemini-2.0-flash-exp` | Faster generation, good quality, lower cost |
+| `gemini-3.1-flash-image-preview` | **Default.** Highest quality, 4K support, best text rendering (Nano Banana 2, launched Feb 2026) |
+| `gemini-2.5-flash-image-preview` | Fast generation, 1K resolution, good quality (Nano Banana) |
+| `gemini-3-pro-image-preview` | Previous-gen Pro model, still high quality (Nano Banana Pro) |
+| `gemini-2.0-flash-exp` | Older experimental model; prefer `gemini-2.5-flash-image-preview` for new work |
 
 ### Image Size (Gemini 3.1 / 3 only)
 
@@ -246,11 +247,14 @@ Naming format: `generated-[timestamp]-[id].png`
 
 ## Model Comparison
 
-| Model | Speed | Quality | Cost | Best For |
-|-------|-------|---------|------|----------|
-| `gemini-3.1-flash-image-preview` | Fast | Highest (4K) | Moderate | Final assets, print, marketing |
-| `gemini-3-pro-image-preview` | Slower | High (4K) | Higher | Previous-gen fallback |
-| `gemini-2.0-flash-exp` | Fastest | Good | Lower | Prototyping, iteration, drafts |
+| Model | Speed | Quality | Max Res | Cost | Best For |
+|-------|-------|---------|---------|------|----------|
+| `gemini-3.1-flash-image-preview` | Fast | Highest | 4K | ~$0.045/img (1K) | Final assets, print, marketing |
+| `gemini-2.5-flash-image-preview` | Fastest | Good | 1K | ~$0.039/img | Prototyping, iteration, drafts |
+| `gemini-3-pro-image-preview` | Slower | High | 4K | ~$0.134/img | Previous-gen Pro fallback |
+| `gemini-2.0-flash-exp` | Fast | Good | 1K | Low | Legacy; use 2.5-flash-image-preview instead |
+
+> **Pricing as of March 2026.** Free tier (~500 req/day) available via Google AI Studio for all models.
 
 ## Troubleshooting
 
