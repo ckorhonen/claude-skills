@@ -1,6 +1,6 @@
 ---
 name: mcp-builder
-description: Guide for creating high-quality MCP (Model Context Protocol) servers that enable LLMs to interact with external services through well-designed tools. Use when building MCP servers to integrate external APIs or services, whether in Python (FastMCP) or Node/TypeScript (MCP SDK).
+description: Guide for creating high-quality MCP (Model Context Protocol) servers that enable LLMs to interact with external services through well-designed tools. Use when building MCP servers to integrate external APIs or services, whether in Python (FastMCP/MCP SDK) or Node/TypeScript (MCP SDK). Covers tool design, output schemas, Streamable HTTP transport, authentication patterns, evaluation creation, and common debugging.
 license: Complete terms in LICENSE.txt
 ---
 
@@ -50,8 +50,9 @@ Key pages to review:
 #### 1.3 Study Framework Documentation
 
 **Recommended stack:**
-- **Language**: TypeScript (high-quality SDK support and good compatibility in many execution environments e.g. MCPB. Plus AI models are good at generating TypeScript code, benefiting from its broad usage, static typing and good linting tools)
+- **Language**: TypeScript (high-quality SDK support and good compatibility in many execution environments. AI models are good at generating TypeScript code, benefiting from its broad usage, static typing and good linting tools)
 - **Transport**: Streamable HTTP for remote servers, using stateless JSON (simpler to scale and maintain, as opposed to stateful sessions and streaming responses). stdio for local servers.
+- **Auth**: For remote servers, use OAuth 2.1 (MCP spec's standard) or API key via Authorization header. See MCP spec `authorization.md` for the canonical OAuth flow.
 
 **Load framework documentation:**
 
@@ -189,6 +190,65 @@ Create an XML file with this structure:
   </qa_pair>
 <!-- More qa_pairs... -->
 </evaluation>
+```
+
+---
+
+## Security Best Practices
+
+MCP servers can be exposed to the internet and handle sensitive operations. Follow these guidelines:
+
+### Authentication & Authorization
+- **Remote servers**: Implement OAuth 2.1 or API key authentication
+- **Validate all inputs**: Never trust client-provided data; validate against schemas
+- **Secrets**: Never hardcode API keys; use environment variables
+- **Scope limiting**: Only expose tools the client needs; use least privilege
+
+### Input Validation
+```typescript
+// Use Zod with strict schemas
+const DeleteUserSchema = z.object({
+  userId: z.string().uuid(),  // UUID format enforced
+  reason: z.enum(["spam", "policy_violation", "user_request"]),  // Enum limits
+});
+
+// Never allow arbitrary code execution
+const QuerySchema = z.object({
+  table: z.enum(["users", "orders", "products"]),  // No arbitrary tables
+  id: z.number().int().positive(),
+});
+```
+
+### Rate Limiting & Abuse Prevention
+```typescript
+// Add rate limiting to destructive operations
+const rateLimiter = new Map<string, number[]>();
+
+function checkRateLimit(clientId: string, limit: number, windowMs: number): boolean {
+  const now = Date.now();
+  const calls = rateLimiter.get(clientId) ?? [];
+  const windowCalls = calls.filter(t => now - t < windowMs);
+  if (windowCalls.length >= limit) return false;
+  rateLimiter.set(clientId, [...windowCalls, now]);
+  return true;
+}
+```
+
+### Audit Logging
+```typescript
+// Log all tool calls for sensitive operations
+server.registerTool("delete_record", {
+  // ...
+  handler: async ({ id }) => {
+    console.error(JSON.stringify({  // stderr for logging
+      event: "tool_call",
+      tool: "delete_record",
+      params: { id },
+      timestamp: new Date().toISOString(),
+    }));
+    // ... implementation
+  }
+});
 ```
 
 ---

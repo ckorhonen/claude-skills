@@ -1,6 +1,6 @@
 ---
 name: "security-threat-model"
-description: "Repository-grounded threat modeling that enumerates trust boundaries, assets, attacker capabilities, abuse paths, and mitigations, and writes a concise Markdown threat model. Trigger only when the user explicitly asks to threat model a codebase or path, enumerate threats/abuse paths, or perform AppSec threat modeling. Do not trigger for general architecture summaries, code review, or non-security design work."
+description: "Repository-grounded threat modeling that enumerates trust boundaries, assets, attacker capabilities, abuse paths, and mitigations, then writes a concise actionable Markdown threat model. Trigger only when the user explicitly asks to threat model a codebase or path, enumerate threats/abuse paths, or perform AppSec threat modeling. Covers STRIDE, PASTA, and attacker-goal-based methodologies, with modern considerations for AI/ML systems, cloud-native deployments, and supply chain threats."
 ---
 
 # Threat Model Source Code Repo
@@ -157,9 +157,62 @@ Mention this in the deliverable.
 - Medium: targeted DoS of critical components, partial data exposure, rate-limit bypass with measurable impact, log/metrics poisoning that affects detection.
 - Low: low-sensitivity info leaks, noisy DoS with easy mitigation, issues requiring unlikely preconditions.
 
+## AI/ML System Threat Modeling
+
+For systems that include AI/ML components (LLMs, embeddings, RAG pipelines), add these threat categories:
+
+### AI-Specific Threats
+
+| Threat | Description | Typical Impact |
+|--------|-------------|----------------|
+| **Prompt injection** | Malicious content in user input overrides system instructions | Privilege escalation, data exfiltration |
+| **Indirect prompt injection** | Malicious content in external data (documents, web pages) hijacks agent actions | Unauthorized tool calls, data theft |
+| **Training data poisoning** | Adversarial examples in fine-tuning data embed backdoors | Model behavior manipulation |
+| **Model exfiltration** | Stealing model weights or distilling proprietary models | IP theft, circumventing safety |
+| **Embedding inversion** | Reconstructing PII from embedding vectors stored in vector DBs | Privacy violation |
+| **RAG manipulation** | Injecting adversarial documents into knowledge bases | Misinformation propagation |
+| **Jailbreaking** | Bypassing safety filters via adversarial prompts | Policy violations, harmful output |
+| **Context window attack** | Flooding context to push out safety instructions | Safety bypass |
+
+### AI Threat Model Checklist
+
+- [ ] Are system prompts protected from user override?
+- [ ] Is external data (documents, web search) sanitized before inclusion in context?
+- [ ] Are agent tool calls authorized against user permissions?
+- [ ] Is vector database access controlled (no cross-tenant access)?
+- [ ] Are model outputs validated before executing actions (e.g., code execution)?
+- [ ] Are LLM API keys scoped and rate-limited per user?
+- [ ] Is logging in place to detect prompt injection attempts?
+
+## Supply Chain Threat Modeling
+
+Modern applications depend heavily on third-party packages. Include:
+
+| Threat | Example | Mitigation |
+|--------|---------|------------|
+| Typosquatting | `reqursts` instead of `requests` | Lock files, package signing |
+| Dependency confusion | Internal package name hijacked in public registry | Scoped packages, registry config |
+| Compromised maintainer | `event-stream` npm incident | SBOM + CVE monitoring, VCS integrity |
+| Build system compromise | SolarWinds-style | Reproducible builds, SLSA Level 3 |
+| CI/CD hijacking | Actions workflow injection | Pin Actions by commit hash, not tag |
+
+## Cloud-Native Deployment Threats
+
+For containerized/Kubernetes/serverless deployments:
+
+- **Container escape**: Privileged containers or host path mounts
+- **SSRF to metadata service**: AWS IMDSv1 allows credential theft from within containers
+- **Kubernetes RBAC over-permission**: ServiceAccount tokens with cluster-wide access
+- **Secrets in environment variables**: Visible in container inspection, logs
+- **Lateral movement via service mesh**: Unencrypted east-west traffic
+
 ## References
 
 - Output contract and full prompt template: `references/prompt-template.md`
 - Optional controls/asset list: `references/security-controls-and-assets.md`
+- OWASP Top 10: https://owasp.org/Top10/
+- OWASP LLM Top 10: https://owasp.org/www-project-top-10-for-large-language-model-applications/
+- MITRE ATT&CK: https://attack.mitre.org/
+- STRIDE methodology: Microsoft SDL Threat Modeling
 
 Only load the reference files you need. Keep the final result concise, grounded, and reviewable.

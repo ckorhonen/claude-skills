@@ -1,6 +1,6 @@
 ---
 name: scientific-critical-thinking
-description: "Evaluate research rigor. Assess methodology, experimental design, statistical validity, biases, confounding, evidence quality (GRADE, Cochrane ROB), for critical analysis of scientific claims."
+description: "Evaluate research rigor and scientific claims. Assess methodology, experimental design, statistical validity, biases, confounding, and evidence quality using GRADE, Cochrane ROB, and preregistration standards. Use for critical analysis of research papers, evaluating AI/ML study claims, reviewing preprints, or fact-checking scientific assertions in any domain."
 ---
 
 # Scientific Critical Thinking
@@ -72,6 +72,18 @@ Evaluate research methodology for rigor, validity, and potential flaws.
    - Are multiple measures used to triangulate findings?
 
 **Reference:** See `references/scientific_method.md` for detailed principles and `references/experimental_design.md` for comprehensive design checklist.
+
+#### AI/ML Research-Specific Considerations
+
+When evaluating AI/ML papers (increasingly important in 2025/2026):
+
+1. **Benchmark contamination**: Was test data used in pretraining? Check if paper reports results on public benchmarks only vs. held-out private sets.
+2. **Cherry-picked examples**: Qualitative examples may not represent typical performance.
+3. **Compute fairness**: Is the comparison against models with similar parameter counts and compute budgets?
+4. **Reproducibility**: Is code/weights released? Can results be reproduced independently?
+5. **Evaluation harness consistency**: Same benchmarks use different prompting strategies, leading to incomparable results.
+6. **Human preference data leakage**: RLHF models may be tuned on human preference data that indirectly overlaps with evaluation benchmarks.
+7. **Capability vs. deployment gap**: Lab evaluations may not reflect real-world deployment constraints.
 
 ### 2. Bias Detection
 
@@ -528,3 +540,37 @@ This skill includes comprehensive reference materials that provide detailed fram
 3. Recognize limitations and uncertainties
 4. Suggest improvements for future work
 5. Advance scientific understanding
+
+## Quick Evaluation Checklist
+
+Use this rapid checklist for paper triage:
+
+**Design (5 points)**
+- [ ] Research question clearly stated and answerable?
+- [ ] Design appropriate for causal/associational claims?
+- [ ] Sample size adequate (power analysis reported)?
+- [ ] Comparison groups appropriate?
+- [ ] Preregistered (clinicaltrials.gov, OSF, AsPredicted)?
+
+**Execution (5 points)**
+- [ ] Randomization and blinding implemented correctly?
+- [ ] All planned outcomes reported (no selective reporting)?
+- [ ] Attrition rates acceptable and balanced?
+- [ ] Measurement instruments validated?
+- [ ] Confounders identified and controlled?
+
+**Analysis (5 points)**
+- [ ] Statistical tests appropriate for data type?
+- [ ] Effect sizes reported alongside p-values?
+- [ ] Multiple comparison correction applied?
+- [ ] Confidence intervals provided?
+- [ ] Missing data handled appropriately?
+
+**Conclusions (5 points)**
+- [ ] Conclusions proportionate to evidence?
+- [ ] Limitations acknowledged honestly?
+- [ ] Causal language used only when design supports it?
+- [ ] Generalizability caveats stated?
+- [ ] Conflicts of interest disclosed?
+
+**Score interpretation**: 18-20 = high confidence; 12-17 = moderate with caveats; <12 = treat conclusions cautiously
