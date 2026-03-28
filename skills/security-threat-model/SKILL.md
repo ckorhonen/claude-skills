@@ -1,5 +1,5 @@
 ---
-name: "security-threat-model"
+name: security-threat-model
 description: "Repository-grounded threat modeling that enumerates trust boundaries, assets, attacker capabilities, abuse paths, and mitigations, then writes a concise actionable Markdown threat model. Trigger only when the user explicitly asks to threat model a codebase or path, enumerate threats/abuse paths, or perform AppSec threat modeling. Covers STRIDE, PASTA, and attacker-goal-based methodologies, with modern considerations for AI/ML systems, cloud-native deployments, and supply chain threats."
 ---
 
