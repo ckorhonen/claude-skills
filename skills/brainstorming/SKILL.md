@@ -85,7 +85,7 @@ digraph brainstorming {
 
 **Documentation:**
 - Write the validated design to `docs/plans/YYYY-MM-DD-<topic>-design.md`
-- Use elements-of-style:writing-clearly-and-concisely skill if available
+  (create the `docs/plans/` directory if it doesn't exist: `mkdir -p docs/plans`)
 - Commit the design document to git
 
 **Implementation:**

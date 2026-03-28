@@ -64,14 +64,22 @@ All scripts are non-interactive, expose `--help`, emit structured JSON on stdout
 2. Record the baseline:
 
    ```bash
+   # Option A: save to file first, then log
    python3 scripts/run_experiment.py \
      --id baseline \
      --hypothesis "Control run" \
      --change-summary "No code changes" \
      --baseline \
      --output .autoresearch/baseline.json
-
    python3 scripts/log_experiment.py --input .autoresearch/baseline.json
+
+   # Option B: pipe directly
+   python3 scripts/run_experiment.py \
+     --id baseline \
+     --hypothesis "Control run" \
+     --change-summary "No code changes" \
+     --baseline \
+     | python3 scripts/log_experiment.py
    ```
 
 3. Record each candidate experiment:
@@ -82,7 +90,6 @@ All scripts are non-interactive, expose `--help`, emit structured JSON on stdout
      --hypothesis "Inlining removes allocation churn" \
      --change-summary "Inline helper and pre-size buffer" \
      --output .autoresearch/exp-001.json
-
    python3 scripts/log_experiment.py --input .autoresearch/exp-001.json
    ```
 

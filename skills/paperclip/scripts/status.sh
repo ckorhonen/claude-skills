@@ -2,6 +2,29 @@
 # Quick company status overview
 # Usage: ./status.sh [--json]
 
+set -euo pipefail
+
+usage() {
+  cat <<'EOF'
+Print a quick overview of the Paperclip company: agents, active issues, and todo backlog.
+
+Usage: status.sh [OPTIONS]
+
+Options:
+  --json       Output raw JSON from API calls
+  --help, -h   Show this help text
+
+Environment:
+  PAPERCLIP_API_KEY     Required
+  PAPERCLIP_COMPANY_ID  Required
+  PAPERCLIP_API_URL     Optional (default: http://127.0.0.1:3100)
+EOF
+}
+
+for arg in "$@"; do
+  case "$arg" in --help|-h) usage; exit 0 ;; esac
+done
+
 if command -v paperclip &>/dev/null; then
   echo "=== Agents ==="
   paperclip agents "$@"
@@ -16,7 +39,7 @@ else
   API="${PAPERCLIP_API_URL:-http://127.0.0.1:3100}"
 
   if [ -z "$TOKEN" ] || [ -z "$PAPERCLIP_COMPANY_ID" ]; then
-    echo "Error: PAPERCLIP_API_KEY and PAPERCLIP_COMPANY_ID must be set"
+    echo "Error: PAPERCLIP_API_KEY and PAPERCLIP_COMPANY_ID must be set" >&2
     exit 1
   fi
 

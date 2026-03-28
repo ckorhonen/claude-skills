@@ -1,6 +1,6 @@
 ---
 name: executing-plans
-description: Use when you have a written implementation plan to execute in a separate session with review checkpoints
+description: Execute a written implementation plan in batches with checkpoint-based review. Use when you have a plan document (from writing-plans or brainstorming) and need to implement it task-by-task with architect feedback between batches. Ensures disciplined execution with verification at each step.
 ---
 
 # Executing Plans
@@ -60,10 +60,11 @@ Once you've completed all batches and your partner approves, move to Step 5 (Com
 
 ### Step 5: Complete Development
 
-After all tasks complete and verified, use the superpowers:finishing-a-development-branch skill to wrap up. This skill handles the final verification and merge ceremony that you shouldn't do ad-hoc — it ensures tests pass, handles edge cases around main/master branches, and walks through proper cleanup.
+After all tasks complete and verified, finalize the branch. Verify all tests pass, ensure the working tree is clean, and then present options to the user: merge to main, open a PR, or keep the branch for further review.
 
-- Announce: "I'm using the superpowers:finishing-a-development-branch skill to complete this work."
-- Follow that skill to verify tests, present options, execute choice
+- Run the full test suite one final time
+- Confirm no untracked or uncommitted changes remain
+- Ask the user: merge now, open a PR, or leave for manual review
 
 ## When to Stop and Ask for Help
 
@@ -125,6 +126,11 @@ Execution should pause for clarification when:
 ## Integration
 
 **Related workflow skills:**
-- **superpowers:using-git-worktrees** — Sets up an isolated worktree before you execute. This prevents accidents on main and keeps your work sandboxed. You should create a worktree first (this skill guides that).
-- **superpowers:writing-plans** — Generates the plan that this skill executes. This skill assumes a well-structured plan exists; if you need to create one, refer to that skill first.
-- **superpowers:finishing-a-development-branch** — Completes development after all tasks are done. It handles testing, branch cleanup, and merge ceremony that you shouldn't improvise.
+- **writing-plans** — Generates the plan that this skill executes. This skill assumes a well-structured plan exists; if you need to create one, refer to that skill first.
+- **brainstorming** — Produces the design that feeds into writing-plans. Run brainstorming → writing-plans → executing-plans for the full workflow.
+
+**Git worktree tip:** Before executing a plan, consider running in an isolated git worktree so your work is sandboxed from main:
+```bash
+git worktree add ../feature-work -b feature/my-feature
+```
+This prevents accidents on main and lets you abandon bad experiments cleanly.
