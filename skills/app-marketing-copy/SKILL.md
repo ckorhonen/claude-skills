@@ -130,7 +130,7 @@ Need everything: store listings, landing page copy, ads
 
 ## Quality checks (do before final)
 
-- Character limits: validate with `scripts/check_app_store_limits.py` for store fields.
+- Character limits: validate with `scripts/check_app_store_limits.py --platform ios --input draft.json` (or `--platform google_play`) for store fields.
 - Consistency: keep the same core value prop across title/subtitle/hero/screenshot 1.
 - Compliance: avoid disallowed claims, competitor trademarks, and sensitive targeting; ask if regulated domain (health/finance/kids).
 - Readability: short sentences, active voice, scannable bullets.
@@ -349,16 +349,22 @@ Write in US English → Translate to other languages → Done
 **Solution:**
 ```bash
 # Validate all fields at once
-python scripts/check_app_store_limits.py input.json
+python scripts/check_app_store_limits.py --platform ios --input input.json
 
-# Input format
+# Input format (input.json)
 {
-  "platform": "ios",  // or "google_play"
   "app_name": "YourApp",
   "subtitle": "Your subtitle text",
   "description": "Full description...",
   "keywords": "keyword,list,comma,separated"
 }
+
+# Or pipe from stdin
+echo '{"app_name":"YourApp","subtitle":"Edit photos fast"}' | \
+  python scripts/check_app_store_limits.py --platform ios --input -
+
+# Google Play variant
+python scripts/check_app_store_limits.py --platform google_play --input input.json
 ```
 
 **Quick fixes:**
