@@ -10,6 +10,29 @@
 #
 # Opt-out: Set CONTINUOUS_LEARNING=0 to disable this reminder
 
+# Handle --help flag
+if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
+    cat << 'HELP'
+Usage: continuous-learning-activator.sh [--help]
+
+Auto-Activation Hook for the Continuous Learning skill.
+Outputs a reminder to run /retrospective at the end of a session
+to capture reusable patterns as new skills.
+
+Options:
+  --help, -h    Show this help message and exit
+
+Environment:
+  CONTINUOUS_LEARNING=0    Set to disable the reminder output
+
+Installation:
+  1. Copy to ~/.claude/hooks/
+  2. chmod +x ~/.claude/hooks/continuous-learning-activator.sh
+  3. Register in ~/.claude/settings.json as a PostToolUse or Stop hook
+HELP
+    exit 0
+fi
+
 # Check for opt-out
 if [ "$CONTINUOUS_LEARNING" = "0" ]; then
     exit 0
