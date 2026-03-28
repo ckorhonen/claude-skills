@@ -27,9 +27,20 @@ python3 scripts/init_session.py \
   --max-generations 50
 ```
 
+**Real output:**
+```json
+{
+  "status": "ok",
+  "session_path": "/path/to/project/.hyperagent/session.json",
+  "artifacts_dir": "/path/to/project/.hyperagent",
+  "scaffolded_hyperagent_md": true,
+  "exclude_updated": true
+}
+```
+
 This creates:
 - `hyperagent.md` — session brief and evolutionary history
-- `.hyperagent/` — local artifacts directory (gitignored)
+- `.hyperagent/` — local artifacts directory (gitignored via `.git/info/exclude`)
 
 ### 2. Write your task script
 
@@ -37,11 +48,13 @@ Create `task.sh` that runs your task agent and emits `METRIC` lines:
 
 ```bash
 #!/bin/bash
-set -euo pipefail
 python3 src/agent.py --input data/test.json
-# Agent should emit lines like:
+# Script must emit lines like:
 # METRIC accuracy=0.85
 # METRIC latency_ms=120
+#
+# JSON format also supported:
+# METRIC {"accuracy": 0.85, "latency_ms": 120}
 ```
 
 ### 3. Evaluate the baseline
@@ -58,6 +71,29 @@ python3 scripts/run_task.py \
 python3 scripts/log_variant.py --input .hyperagent/gen-000.json
 ```
 
+**Real output from `log_variant.py`:**
+```json
+{
+  "id": "gen-000",
+  "generation": 0,
+  "baseline": true,
+  "hypothesis": "Control: unmodified task agent",
+  "change_summary": "No modifications",
+  "metric_name": "score",
+  "direction": "higher",
+  "measured_trials": [0.3333, 0.3333, 0.3333],
+  "summary": {
+    "median": 0.3333,
+    "mean": 0.3333,
+    "min": 0.3333,
+    "max": 0.3333
+  },
+  "checks": "passed",
+  "disposition": "keep",
+  "reason": "Initial baseline recorded."
+}
+```
+
 ### 4. Run the improvement loop
 
 For each generation:
@@ -65,30 +101,171 @@ For each generation:
 ```bash
 # Select a parent variant
 python3 scripts/select_parent.py
+```
 
-# (You, the LLM, act as the meta-agent here:)
-# - Analyze the parent's code and performance history
-# - Hypothesize an improvement with a causal theory
-# - Apply code modifications
-# - Record what changed and why
+**Real output from `select_parent.py`:**
+```json
+{
+  "selected_parent": "gen-000",
+  "score": 0.3333,
+  "children_count": 0,
+  "generation": 1,
+  "plateau_detected": false,
+  "improvement_velocity": null,
+  "archive_size": 1,
+  "kept_count": 1,
+  "reason": "Selected gen-000 (score=0.3333, children=0)"
+}
+```
 
+Then, **you (the LLM) act as the meta-agent:**
+- Analyze the parent's code and performance history
+- Hypothesize an improvement with a causal theory
+- Apply code modifications
+- Record what changed and why
+
+```bash
 # Evaluate the new variant
 python3 scripts/run_task.py \
   --id gen-001 \
-  --hypothesis "Add few-shot examples to improve pattern recognition" \
-  --change-summary "Inserted 3 domain-specific examples into prompt" \
+  --hypothesis "Keyword extraction captures more reference terms than first-sentence" \
+  --change-summary "Changed summarize() to remove stopwords from full text" \
   --parent gen-000 \
   --generation 1 \
+  --command "python3 src/agent_v1.py" \
   --output .hyperagent/gen-001.json
 
 python3 scripts/log_variant.py --input .hyperagent/gen-001.json
+```
+
+**Real output when variant improves:**
+```json
+{
+  "id": "gen-001",
+  "generation": 1,
+  "parent_id": "gen-000",
+  "summary": {"median": 0.9444, "mean": 0.9444, "min": 0.9444, "max": 0.9444},
+  "disposition": "keep",
+  "reason": "Improved by 183.35% over best (gen-000). Checks passed.",
+  "improvement_pct": 183.34833483348334
+}
+```
+
+**Real output when variant does NOT improve:**
+```json
+{
+  "id": "gen-003",
+  "generation": 2,
+  "parent_id": "gen-002",
+  "summary": {"median": 0.5278},
+  "disposition": "discard",
+  "reason": "Variant did not beat the current best.",
+  "improvement_pct": -44.11266412537061
+}
+```
+
+**Real output when variant crashes:**
+```json
+{
+  "id": "gen-crash",
+  "status": "crash",
+  "summary": {},
+  "disposition": "crash",
+  "reason": "can't open file '/tmp/nonexistent.py': [Errno 2] No such file or directory"
+}
 ```
 
 ### 5. Generate reports
 
 ```bash
 python3 scripts/render_report.py
-open .hyperagent/report.html
+```
+
+**Real output:**
+```json
+{
+  "status": "ok",
+  "archive_size": 4,
+  "csv_path": "/path/to/project/.hyperagent/results.csv",
+  "report_path": "/path/to/project/.hyperagent/report.html"
+}
+```
+
+Open `.hyperagent/report.html` for an HTML report with:
+- Summary stats (kept/discarded/failed counts)
+- Best variant highlighted
+- SVG line charts of metric over generations
+- Best-so-far trend chart
+- Disposition bar chart
+- Lineage tree (parent→child relationships)
+- Full variant table with hypotheses and change summaries
+
+## Real Tested Example: Text Summarizer Optimization
+
+This is a real run tested on 2026-03-28. Task: improve a Python text summarizer's
+word overlap score (ROUGE-like metric).
+
+### Setup
+
+```python
+# target.py (baseline)
+def summarize(text: str) -> str:
+    """Baseline: just take the first sentence."""
+    sentences = text.split('. ')
+    return sentences[0] if sentences else text
+```
+
+```bash
+# task.sh
+python3 target.py
+# Outputs: METRIC score=0.3333
+```
+
+### Init
+
+```bash
+python3 scripts/init_session.py \
+  --goal "Improve text summarizer word overlap score" \
+  --metric-name score \
+  --unit "overlap" \
+  --direction higher \
+  --task-command "bash task.sh" \
+  --checks-command "bash checks.sh" \
+  --min-improvement 5.0 \
+  --warmups 1 --trials 3 \
+  --scope target.py \
+  --max-generations 10
+```
+
+### Run
+
+| ID | Generation | Hypothesis | Score | Disposition | Improvement |
+|----|-----------|------------|-------|-------------|-------------|
+| gen-000 | 0 | Baseline: first-sentence extraction | 0.3333 | keep | — |
+| gen-001 | 1 | Pick sentence with most unique words | 0.3333 | discard | 0.0% |
+| gen-002 | 1 | Keyword extraction (remove stopwords) | **0.9444** | **keep** | **+183.3%** |
+| gen-003 | 2 | TF-IDF sentence ranking + top-2 | 0.5278 | discard | -44.1% |
+
+### Select parent for gen-001 (fresh archive, only baseline)
+
+```json
+{
+  "selected_parent": "gen-000",
+  "score": 0.3333,
+  "children_count": 0,
+  "generation": 1
+}
+```
+
+### Select parent after gen-002 is archived
+
+```json
+{
+  "selected_parent": "gen-002",
+  "score": 0.9444,
+  "children_count": 1,
+  "generation": 2
+}
 ```
 
 ## Example Usages
@@ -96,7 +273,6 @@ open .hyperagent/report.html
 ### Optimizing an LLM Prompt
 
 ```bash
-# Goal: improve a summarization prompt's ROUGE score
 python3 scripts/init_session.py \
   --goal "Maximize ROUGE-L score for article summarization" \
   --metric-name rouge_l \
@@ -117,7 +293,6 @@ python3 scripts/init_session.py \
 ### Optimizing Code Performance
 
 ```bash
-# Goal: reduce latency of a hot code path
 python3 scripts/init_session.py \
   --goal "Minimize API response latency" \
   --metric-name latency_ms \
@@ -134,13 +309,11 @@ python3 scripts/init_session.py \
 # gen-001: Add response caching → 85ms (keep, -29.2%)
 # gen-002: Batch database queries → 72ms (keep, -15.3%)
 # gen-003: Async parallel fetch → 68ms (keep, -5.6%)
-# gen-004: Pre-warm cache on startup → 65ms (keep, -4.4%)
 ```
 
 ### Evolving a Reward Function
 
 ```bash
-# Goal: improve RL reward shaping for a robotics task
 python3 scripts/init_session.py \
   --goal "Maximize task completion rate via reward shaping" \
   --metric-name completion_rate \
@@ -150,30 +323,26 @@ python3 scripts/init_session.py \
   --checks-command "./safety_checks.sh" \
   --scope "src/reward.py" \
   --max-generations 40
-
-# The meta-agent can modify the reward function,
-# observe training outcomes, and iteratively improve
-# the reward signal based on completion rate trends.
 ```
 
-### Self-Improving an Agent's Own Tools
+## METRIC Format
 
-```bash
-# Goal: improve an agent's code generation accuracy
-python3 scripts/init_session.py \
-  --goal "Improve code generation pass@1 on HumanEval" \
-  --metric-name pass_at_1 \
-  --unit pct \
-  --direction higher \
-  --task-command "./eval_codegen.sh" \
-  --scope "src/agent.py" "src/prompts/" \
-  --max-generations 50
+Task scripts must emit `METRIC` lines to stdout:
 
-# Meta-level self-modification:
-# The meta-agent can update its own strategy notes
-# in hyperagent.md and memory entries in .hyperagent/memory.jsonl.
-# These meta-improvements transfer if you start a new session.
 ```
+# Key=value format (one or more metrics)
+METRIC score=0.8542
+METRIC latency_ms=142 throughput=850
+
+# JSON format (multiple metrics in one line)
+METRIC {"score": 0.8542, "latency_ms": 142}
+```
+
+Rules:
+- Lines must start with `METRIC ` (case-sensitive)
+- Keys cannot contain spaces in key=value format; use JSON format for multi-word names
+- Values must be parseable as floats
+- Other stdout output is ignored (safe to print debug info)
 
 ## Key Concepts
 
@@ -200,7 +369,8 @@ The meta-agent maintains qualitative memory (`.hyperagent/memory.jsonl`) of:
 - Dead ends and why they failed
 - Successful patterns worth repeating
 - Strategic insights about the optimization landscape
-- Correction plans for future generations
+
+Add memory entries programmatically or via the `append_memory()` utility in `common.py`.
 
 ### Transfer Learning
 
@@ -224,7 +394,9 @@ All scripts:
 - Accept `--help` for full option documentation
 - Emit structured JSON on stdout
 - Keep diagnostics on stderr
-- Are non-interactive
+- Are non-interactive (safe to pipe)
+
+> **Note:** There is no `generate_variant.py`. The meta-agent role — hypothesis generation and code modification — is performed by the LLM agent itself.
 
 ## File Structure
 
@@ -239,7 +411,7 @@ project/
 │   ├── memory.jsonl           # Meta-agent qualitative memory
 │   ├── results.csv            # Spreadsheet-friendly summary
 │   ├── report.html            # Visual HTML report
-│   └── variants/              # Per-variant JSON records
+│   └── variants/              # Per-variant JSON records (optional --output)
 │       ├── gen-000.json
 │       ├── gen-001.json
 │       └── ...

@@ -46,10 +46,11 @@ The key insight from the paper: when the meta-level modification procedure is it
 - **`scripts/common.py`** — shared utilities (archive management, metrics, reporting)
 - **`scripts/init_session.py`** — initialize a hyperagent session, scaffold the workspace
 - **`scripts/run_task.py`** — evaluate a task-agent variant and record metrics
-- **`scripts/generate_variant.py`** — run the meta-agent to propose a new variant from a parent
-- **`scripts/log_variant.py`** — evaluate, decide disposition, add to archive
+- **`scripts/log_variant.py`** — log evaluated record, decide disposition, update archive and reports
 - **`scripts/render_report.py`** — generate HTML report of the full evolutionary history
 - **`scripts/select_parent.py`** — select a parent from the archive for the next generation
+
+> **Note:** There is no `generate_variant.py` script — the meta-agent role (hypothesis generation and code modification) is performed by the LLM agent itself, not by a script.
 
 All scripts are non-interactive, expose `--help`, emit structured JSON on stdout, and keep diagnostics on stderr.
 

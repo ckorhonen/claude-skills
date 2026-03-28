@@ -549,9 +549,13 @@ def render_html_report(
     session: dict[str, Any],
     results: list[dict[str, Any]],
     output_path: Path | None = None,
+    cwd: Path | None = None,
 ) -> Path:
-    path = output_path or report_path()
+    path = output_path or report_path(cwd)
     path.parent.mkdir(parents=True, exist_ok=True)
+    # Resolve cwd from output_path if not explicitly provided
+    if cwd is None and output_path is not None:
+        cwd = output_path.parent.parent
 
     metric_name = session.get("metric_name", "metric")
     unit = session.get("unit", "")
@@ -607,7 +611,7 @@ def render_html_report(
     lineage_html = build_lineage_tree(results)
 
     # Memory entries
-    mem = load_memory()
+    mem = load_memory(cwd)
     mem_html = ""
     if mem:
         mem_items = "\n".join(
@@ -616,7 +620,8 @@ def render_html_report(
         )
         mem_html = f'<section class="panel"><h2>Meta-Agent Memory (last 20)</h2><ul>{mem_items}</ul></section>'
 
-    plateau = detect_plateau(results)
+    plateau_window = session.get("plateau_window", 3)
+    plateau = detect_plateau(results, plateau_window)
     velocity = improvement_velocity(results)
     status_note = ""
     if plateau:

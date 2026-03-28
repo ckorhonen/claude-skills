@@ -37,11 +37,23 @@ def parse_args() -> argparse.Namespace:
 
 def load_record(args: argparse.Namespace) -> dict[str, Any]:
     if args.input:
-        return json.loads(Path(args.input).read_text(encoding="utf-8"))
+        try:
+            return json.loads(Path(args.input).read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            sys.stderr.write(f"Error: invalid JSON in {args.input}: {exc}\n")
+            raise SystemExit(1) from exc
+        except FileNotFoundError as exc:
+            sys.stderr.write(f"Error: file not found: {args.input}\n")
+            raise SystemExit(1) from exc
     raw = sys.stdin.read().strip()
     if not raw:
-        raise ValueError("No input. Use --input or pipe JSON.")
-    return json.loads(raw)
+        sys.stderr.write("Error: no input. Use --input or pipe JSON.\n")
+        raise SystemExit(1)
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError as exc:
+        sys.stderr.write(f"Error: invalid JSON from stdin: {exc}\n")
+        raise SystemExit(1) from exc
 
 
 def decide_disposition(
