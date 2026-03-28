@@ -1,5 +1,5 @@
 ---
-name: "security-best-practices"
+name: security-best-practices
 description: "Perform language and framework specific security best-practice reviews and suggest improvements. Trigger when the user requests: security review, security report, threat assessment, vulnerability scan, security audit, secure-by-default coding, hardening guidance, or security best practices guidance. Supported languages: Python, JavaScript/TypeScript, Go. Covers OWASP Top 10, supply chain security, secrets management, dependency auditing, and modern cloud deployment hardening."
 ---
 
