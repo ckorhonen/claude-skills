@@ -1,6 +1,6 @@
 ---
 name: llm-evaluation
-description: Implement comprehensive evaluation strategies for LLM applications using automated metrics, human feedback, and benchmarking. Use when testing LLM performance, measuring AI application quality, or establishing evaluation frameworks.
+description: Implement comprehensive evaluation strategies for LLM applications using automated metrics, LLM-as-judge, human feedback, and benchmarking. Use when testing LLM performance, measuring AI application quality, comparing prompts/models, or establishing evaluation frameworks. Covers RAGAS for RAG pipelines, evals-as-code CI/CD integration, and modern 2025/2026 practices including structured output evaluation and agentic task success measurement.
 ---
 
 # LLM Evaluation
@@ -16,6 +16,9 @@ Master comprehensive evaluation strategies for LLM applications, from automated 
 - Building confidence in production systems
 - Establishing baselines and tracking progress over time
 - Debugging unexpected model behavior
+- Evaluating RAG pipeline quality (retrieval + generation)
+- Measuring agentic task success rates
+- Testing structured output schema compliance
 
 ## Core Evaluation Types
 
@@ -53,13 +56,94 @@ Manual assessment for quality aspects difficult to automate.
 - **Helpfulness**: Useful to the user
 
 ### 3. LLM-as-Judge
-Use stronger LLMs to evaluate weaker model outputs.
+Use stronger LLMs to evaluate weaker model outputs. This is the dominant approach in 2025/2026 for open-ended tasks.
 
 **Approaches:**
-- **Pointwise**: Score individual responses
-- **Pairwise**: Compare two responses
-- **Reference-based**: Compare to gold standard
-- **Reference-free**: Judge without ground truth
+- **Pointwise**: Score individual responses (0-10 Likert scales)
+- **Pairwise**: Compare two responses (preferred by MT-Bench, Chatbot Arena)
+- **Reference-based**: Compare to gold standard answer
+- **Reference-free**: Judge without ground truth (good for creative/open-ended tasks)
+- **Rubric-based**: Judge against explicit criteria (best for consistency)
+- **Constitutional**: Check against a set of principles or rules
+
+**Key challenges:**
+- Position bias: judge models prefer whichever response appears first
+- Verbosity bias: longer responses often rated higher regardless of quality
+- Self-preference bias: a model may favor its own outputs
+- Mitigation: swap order and average; use structured rubrics; use 3rd-party judges
+
+### 4. RAG-Specific Evaluation (RAGAS)
+
+For Retrieval-Augmented Generation pipelines, use RAGAS metrics:
+
+```python
+from ragas import evaluate
+from ragas.metrics import (
+    faithfulness,        # Is answer grounded in retrieved context?
+    answer_relevancy,   # Does answer address the question?
+    context_precision,  # Is retrieved context relevant?
+    context_recall,     # Is all necessary info retrieved?
+)
+from datasets import Dataset
+
+# Prepare evaluation dataset
+data = {
+    "question": ["What is the capital of France?"],
+    "answer": ["Paris is the capital of France."],
+    "contexts": [["Paris is a city in France. It is the capital."]],
+    "ground_truth": ["Paris"]
+}
+
+dataset = Dataset.from_dict(data)
+result = evaluate(dataset, metrics=[faithfulness, answer_relevancy, context_precision, context_recall])
+print(result)
+```
+
+**RAGAS metric interpretation:**
+- **Faithfulness** (0-1): Low score = hallucination. Critical for factual applications.
+- **Answer Relevancy** (0-1): Low = answer is off-topic or evasive.
+- **Context Precision** (0-1): Low = retrieval fetching irrelevant chunks.
+- **Context Recall** (0-1): Low = missing relevant documents in retrieval.
+
+### 5. Agentic Task Evaluation
+
+For agents that execute multi-step tasks:
+
+```python
+class AgentTaskEvaluator:
+    """Evaluate agentic task completion."""
+
+    def evaluate_task(self, task, agent_trajectory, expected_result):
+        return {
+            "task_success": self._check_task_success(agent_trajectory, expected_result),
+            "tool_use_accuracy": self._check_tool_selection(agent_trajectory),
+            "step_efficiency": self._measure_step_efficiency(agent_trajectory),
+            "hallucination_rate": self._check_for_hallucinations(agent_trajectory),
+        }
+
+    def _check_task_success(self, trajectory, expected):
+        # Did agent achieve the goal? (binary or partial credit)
+        final_state = trajectory[-1]["state"]
+        return compare_states(final_state, expected)
+
+    def _measure_step_efficiency(self, trajectory):
+        # How many extra steps did agent take? (vs. optimal path)
+        actual_steps = len(trajectory)
+        optimal_steps = self.get_optimal_path_length(trajectory[0]["task"])
+        return optimal_steps / actual_steps  # 1.0 = optimal
+
+    def _check_tool_selection(self, trajectory):
+        # Did agent use correct tools in correct order?
+        correct_tools = sum(1 for step in trajectory if step["tool_correct"])
+        return correct_tools / len(trajectory)
+```
+
+**Key agentic metrics:**
+- **Task completion rate**: % of tasks fully completed
+- **Step efficiency**: optimal steps / actual steps taken
+- **Tool selection accuracy**: correct tool chosen / total tool calls
+- **Error recovery**: did agent recover from mistakes?
+- **Hallucinated tool calls**: tools called with made-up parameters
 
 ## Quick Start
 
@@ -183,65 +267,96 @@ def calculate_factuality(claim, knowledge_base):
 
 ## LLM-as-Judge Patterns
 
-### Single Output Evaluation
+### Single Output Evaluation (Rubric-Based)
 ```python
+from openai import OpenAI
+import json
+
+client = OpenAI()
+
 def llm_judge_quality(response, question):
-    """Use GPT-5 to judge response quality."""
-    prompt = f"""Rate the following response on a scale of 1-10 for:
-1. Accuracy (factually correct)
-2. Helpfulness (answers the question)
-3. Clarity (well-written and understandable)
+    """Use GPT-4.1 to judge response quality with structured output."""
+    prompt = f"""You are an impartial evaluator. Rate the following response on a scale of 1-10 for each criterion.
 
-Question: {question}
-Response: {response}
+**Criteria:**
+1. Accuracy (1=many factual errors, 10=completely correct)
+2. Helpfulness (1=doesn't address question, 10=fully resolves question)  
+3. Clarity (1=confusing/unclear, 10=perfectly clear and well-structured)
 
-Provide ratings in JSON format:
+**Question:** {question}
+**Response:** {response}
+
+Evaluate objectively. Provide ratings in JSON format:
 {{
   "accuracy": <1-10>,
   "helpfulness": <1-10>,
   "clarity": <1-10>,
-  "reasoning": "<brief explanation>"
+  "reasoning": "<2-3 sentence justification>",
+  "overall": <1-10>
 }}
 """
 
-    result = openai.ChatCompletion.create(
-        model="gpt-5",
+    result = client.chat.completions.create(
+        model="gpt-4.1",
         messages=[{"role": "user", "content": prompt}],
-        temperature=0
+        temperature=0,
+        response_format={"type": "json_object"}  # Structured output
     )
 
     return json.loads(result.choices[0].message.content)
-```
 
-### Pairwise Comparison
+
+### Pairwise Comparison (with position bias mitigation)
 ```python
 def compare_responses(question, response_a, response_b):
-    """Compare two responses using LLM judge."""
-    prompt = f"""Compare these two responses to the question and determine which is better.
+    """Compare two responses using LLM judge with position bias mitigation."""
 
-Question: {question}
+    def _judge(q, r1, r2, label1, label2):
+        prompt = f"""Compare these two responses to the question. Which is better?
 
-Response A: {response_a}
+Question: {q}
 
-Response B: {response_b}
+Response {label1}: {r1}
+
+Response {label2}: {r2}
 
 Which response is better and why? Consider accuracy, helpfulness, and clarity.
 
 Answer with JSON:
 {{
-  "winner": "A" or "B" or "tie",
+  "winner": "{label1}" or "{label2}" or "tie",
   "reasoning": "<explanation>",
   "confidence": <1-10>
 }}
 """
+        result = client.chat.completions.create(
+            model="gpt-4.1",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0,
+            response_format={"type": "json_object"}
+        )
+        return json.loads(result.choices[0].message.content)
 
-    result = openai.ChatCompletion.create(
-        model="gpt-5",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0
-    )
+    # Run twice with swapped order to detect position bias
+    result_ab = _judge(question, response_a, response_b, "A", "B")
+    result_ba = _judge(question, response_b, response_a, "B", "A")  # swapped
 
-    return json.loads(result.choices[0].message.content)
+    # Normalize result_ba back to A/B labels
+    winner_ba_normalized = "A" if result_ba["winner"] == "B" else ("B" if result_ba["winner"] == "A" else "tie")
+
+    # Check for consistency
+    consistent = result_ab["winner"] == winner_ba_normalized
+    if not consistent:
+        final_winner = "tie"  # Disagree = call it a tie
+    else:
+        final_winner = result_ab["winner"]
+
+    return {
+        "winner": final_winner,
+        "consistent": consistent,
+        "reasoning_ab": result_ab["reasoning"],
+        "reasoning_ba": result_ba["reasoning"],
+    }
 ```
 
 ## Human Evaluation Frameworks
@@ -451,21 +566,130 @@ class BenchmarkRunner:
 - **assets/benchmark-dataset.jsonl**: Example datasets
 - **scripts/evaluate-model.py**: Automated evaluation runner
 
+## CI/CD Integration: Evals as Code
+
+Run evaluations automatically in your CI/CD pipeline:
+
+```yaml
+# .github/workflows/eval.yml
+name: LLM Evaluation
+on:
+  pull_request:
+    paths: ['prompts/**', 'src/llm/**']
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run evaluation suite
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          pip install -r requirements-eval.txt
+          python scripts/run_evaluations.py --baseline main --compare HEAD
+          
+      - name: Check for regression
+        run: |
+          python scripts/check_regression.py \
+            --threshold 0.05 \
+            --fail-on-regression
+```
+
+```python
+# scripts/run_evaluations.py
+import argparse
+import json
+from pathlib import Path
+
+def run_eval_suite(model_fn, test_cases, metrics):
+    """Run complete evaluation suite and return results."""
+    results = []
+    for case in test_cases:
+        prediction = model_fn(case["input"])
+        scores = {m.name: m.calculate(prediction, case["reference"]) for m in metrics}
+        results.append({"case": case["id"], "scores": scores})
+    
+    aggregated = {
+        metric: sum(r["scores"][metric] for r in results) / len(results)
+        for metric in results[0]["scores"]
+    }
+    return aggregated
+
+def main():
+    # Load test cases
+    test_cases = json.loads(Path("evals/test_cases.json").read_text())
+    
+    # Run evaluation
+    results = run_eval_suite(your_model, test_cases, your_metrics)
+    
+    # Save results with git commit hash
+    import subprocess
+    commit = subprocess.check_output(["git", "rev-parse", "HEAD"]).decode().strip()
+    
+    output = {"commit": commit, "metrics": results}
+    Path(f"eval_results/{commit[:8]}.json").write_text(json.dumps(output, indent=2))
+    print(json.dumps(results, indent=2))
+
+if __name__ == "__main__":
+    main()
+```
+
+## Structured Output Evaluation
+
+For applications that require structured outputs (JSON schemas, function calls):
+
+```python
+from pydantic import BaseModel, ValidationError
+
+class ExpectedOutput(BaseModel):
+    name: str
+    age: int
+    email: str
+
+def evaluate_structured_output(model_response: str, expected: dict) -> dict:
+    """Evaluate whether model output conforms to schema and matches expected values."""
+    
+    # 1. Schema compliance
+    try:
+        parsed = ExpectedOutput.model_validate_json(model_response)
+        schema_valid = True
+    except ValidationError as e:
+        return {"schema_valid": False, "error": str(e), "field_accuracy": 0}
+    
+    # 2. Field accuracy
+    expected_obj = ExpectedOutput(**expected)
+    fields = ExpectedOutput.model_fields.keys()
+    correct = sum(1 for f in fields if getattr(parsed, f) == getattr(expected_obj, f))
+    
+    return {
+        "schema_valid": True,
+        "field_accuracy": correct / len(fields),
+        "fields_correct": correct,
+        "fields_total": len(fields),
+    }
+```
+
 ## Best Practices
 
-1. **Multiple Metrics**: Use diverse metrics for comprehensive view
-2. **Representative Data**: Test on real-world, diverse examples
-3. **Baselines**: Always compare against baseline performance
-4. **Statistical Rigor**: Use proper statistical tests for comparisons
-5. **Continuous Evaluation**: Integrate into CI/CD pipeline
-6. **Human Validation**: Combine automated metrics with human judgment
-7. **Error Analysis**: Investigate failures to understand weaknesses
-8. **Version Control**: Track evaluation results over time
+1. **Multiple Metrics**: Use diverse metrics for comprehensive view; no single metric tells the whole story
+2. **Representative Data**: Test on real-world, diverse examples; adversarial examples too
+3. **Baselines**: Always compare against baseline performance (previous prompt version, weaker model)
+4. **Statistical Rigor**: Use proper statistical tests; bootstrap confidence intervals when n < 100
+5. **Continuous Evaluation**: Integrate into CI/CD pipeline; eval on every prompt change
+6. **Human Validation**: Periodically validate LLM-as-judge outputs against human raters
+7. **Error Analysis**: Cluster failures to find systematic weaknesses, not just count them
+8. **Version Control**: Track evaluation datasets and results in git; treat evals as code
+9. **Position Bias Mitigation**: Swap A/B order in pairwise comparisons; average results
+10. **Separate Dev/Test Sets**: Don't tune prompts on your test set; maintain held-out data
 
 ## Common Pitfalls
 
 - **Single Metric Obsession**: Optimizing for one metric at the expense of others
-- **Small Sample Size**: Drawing conclusions from too few examples
-- **Data Contamination**: Testing on training data
-- **Ignoring Variance**: Not accounting for statistical uncertainty
-- **Metric Mismatch**: Using metrics not aligned with business goals
+- **Small Sample Size**: Drawing conclusions from too few examples (need 50+ for statistical power)
+- **Data Contamination**: Testing on training data or data that was used to tune the prompt
+- **Ignoring Variance**: Not accounting for statistical uncertainty; report confidence intervals
+- **Metric Mismatch**: Using BLEU/ROUGE for open-ended tasks (they're correlation-poor for modern LLMs)
+- **Judge Model Bias**: Not checking if your LLM judge has systematic biases
+- **Benchmark Leakage**: Popular benchmarks may be in training data; prefer private evals
+- **Ignoring Latency/Cost**: A metric improvement that triples cost may not be worth it

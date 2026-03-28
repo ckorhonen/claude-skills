@@ -1,6 +1,6 @@
 ---
 name: mcp-tester
-description: Test and evaluate MCP server tools in the current session. Use when auditing MCP configurations, validating tool quality, testing MCP servers, generating test cases, checking tool descriptions, or analyzing tool efficiency and redundancy.
+description: Test and evaluate MCP server tools in the current Claude Code session. Use when auditing MCP configurations, validating tool quality, testing MCP servers end-to-end, generating test cases, checking tool descriptions and schemas, analyzing tool efficiency and redundancy, or debugging MCP integration issues. Covers tool discovery, quality analysis, test generation with AAA pattern, execution, rating, and cross-tool redundancy analysis.
 ---
 
 # MCP Tool Tester
@@ -715,9 +715,53 @@ If a test fails or times out:
 3. Include failure in final report
 4. Suggest debugging steps for failed tools
 
+## MCP Inspector: Standalone Testing
+
+For testing outside of Claude Code sessions, use the MCP Inspector:
+
+```bash
+# Launch MCP Inspector UI (browser-based)
+npx @modelcontextprotocol/inspector
+
+# Test a specific stdio server
+npx @modelcontextprotocol/inspector stdio node /path/to/server.js
+
+# Test a specific HTTP server
+npx @modelcontextprotocol/inspector http http://localhost:3000/mcp
+
+# With environment variables
+MCP_API_KEY=your-key npx @modelcontextprotocol/inspector stdio node server.js
+```
+
+The MCP Inspector provides:
+- Interactive tool calling UI
+- Schema validation display
+- Request/response inspection
+- Server capability discovery
+
+## Debugging MCP Connection Issues
+
+```bash
+# Check if MCP server process starts correctly
+node dist/index.js  # Should hang waiting for input (stdio) or log port (HTTP)
+
+# Test stdio protocol manually
+echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}' | node dist/index.js
+
+# Check server logs (stderr for stdio servers)
+node dist/index.js 2>server.log &
+# Then interact, then cat server.log
+
+# For HTTP servers
+curl -X POST http://localhost:3000/mcp \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
+```
+
 ## Limitations
 
 - Cannot test MCP tools not configured in current session
 - Does not make direct HTTP requests to MCP server URLs
 - Cannot test tools requiring interactive authentication mid-flow
 - Response time measurements are approximate (based on perceived delay)
+- MCP Inspector required for testing server startup issues and protocol compliance

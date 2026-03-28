@@ -1,6 +1,6 @@
 ---
 name: prompt-factory
-description: Generate world-class, production-ready prompts in one shot through intelligent 5-7 question flow and 69 presets across 15 professional domains. Supports XML/Claude/ChatGPT/Gemini formats with quality validation. Returns a single mega-prompt ready to use—skill does NOT implement the work described in the prompt.
+description: Generate world-class, production-ready prompts in one shot through intelligent 5-7 question flow and 69 presets across 15 professional domains. Supports XML/Claude/ChatGPT/Gemini formats with quality validation. Returns a single mega-prompt ready to use—skill does NOT implement the work described in the prompt. Optimized for modern LLMs including Claude 3.5+, GPT-4.1, and Gemini 2.5.
 ---
 
 # Prompt Factory - World-Class Prompt Powerhouse
@@ -167,6 +167,65 @@ Read on-demand based on context:
 | `references/advanced-workflow.md` | Custom prompt path (Path 2) | 8-step workflow, detailed questions, validation |
 | `references/prompt-patterns.md` | During generation | Best practices (OpenAI/Anthropic/Google), pattern library, template matching |
 | `references/examples.md` | Format clarification | 2-3 worked examples per format (XML, Claude, ChatGPT, Gemini) |
+
+---
+
+## Modern Prompting Techniques (2025/2026)
+
+When generating prompts, incorporate these proven techniques as appropriate:
+
+### Chain-of-Thought (CoT)
+For reasoning tasks, instruct the model to think step-by-step:
+```xml
+<instructions>
+Think through this step-by-step before giving your final answer.
+Show your reasoning process explicitly.
+</instructions>
+```
+
+### Structured Outputs
+For prompts that need machine-parseable responses:
+```xml
+<output_format>
+Respond ONLY with valid JSON matching this schema:
+{"result": string, "confidence": number, "reasoning": string}
+</output_format>
+```
+
+### Few-Shot Examples
+Always include 2-3 high-quality examples for consistent behavior:
+```xml
+<examples>
+<example>
+<input>Schedule a meeting for next Tuesday</input>
+<output>{"action": "create_event", "day": "next_tuesday", "title": "Meeting"}</output>
+</example>
+</examples>
+```
+
+### Role + Context + Task Structure (optimal for Claude)
+```xml
+<role>You are a senior {domain} specialist with 15 years of experience at top-tier firms.</role>
+<context>You are helping {user_type} with {specific_situation}.</context>
+<task>{specific_instructions}</task>
+<constraints>{limitations_and_guardrails}</constraints>
+<output_format>{format_specification}</output_format>
+```
+
+### Negative Instructions
+Explicitly stating what NOT to do reduces unwanted behaviors:
+```xml
+<constraints>
+- Do NOT include unsolicited advice beyond the specific question
+- Do NOT use jargon without explanation
+- Do NOT recommend third-party tools unless asked
+</constraints>
+```
+
+### Model-Specific Formatting Notes
+- **Claude**: Responds best to XML tags; prefers explicit thinking steps; use `<thinking>` for CoT
+- **GPT-4.1**: Responds well to markdown; system prompt is highly influential
+- **Gemini 2.5**: Responds well to numbered lists; excels with explicit JSON schema specs
 
 ---
 

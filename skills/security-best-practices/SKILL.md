@@ -1,6 +1,6 @@
 ---
 name: "security-best-practices"
-description: "Perform language and framework specific security best-practice reviews and suggest improvements. Trigger when the user requests: security review, security report, threat assessment, vulnerability scan, security audit, secure-by-default coding, hardening guidance, or security best practices guidance. Trigger only for supported languages (python, javascript/typescript, go). Do not trigger for general code review, debugging, or non-security tasks."
+description: "Perform language and framework specific security best-practice reviews and suggest improvements. Trigger when the user requests: security review, security report, threat assessment, vulnerability scan, security audit, secure-by-default coding, hardening guidance, or security best practices guidance. Supported languages: Python, JavaScript/TypeScript, Go. Covers OWASP Top 10, supply chain security, secrets management, dependency auditing, and modern cloud deployment hardening."
 ---
 
 # Security Best Practices
@@ -35,7 +35,66 @@ From there it can operate in a few ways.
 
 - If the language/framework is unclear, inspect the repo to determine it and list your evidence.
 - If matching guidance exists in `references/`, load only the relevant files and follow their instructions.
-- If no matching guidance exists, consider if you know any well known security best practices for the chosen language and or frameworks, but if asked to generate a report, let the user know that concrete guidance is not available (you can still generate the report or detect for sure critical vulnerabilities)
+- If no matching guidance exists, consider if you know any well known security best practices for the chosen language and or frameworks, but if asked to generate a report, let the user know that concrete guidance is not available (you can still generate the report or detect for sure critical vulnerabilities).
+
+## Supply Chain & Dependency Security
+
+Modern applications are heavily dependent on third-party packages. Always assess:
+
+1. **Dependency auditing**:
+   ```bash
+   # Node.js
+   npm audit
+   npx better-npm-audit audit --level moderate
+
+   # Python
+   pip-audit
+   safety check
+
+   # Go
+   govulncheck ./...
+   ```
+
+2. **Lock file integrity**: Ensure `package-lock.json`, `yarn.lock`, `poetry.lock`, or `go.sum` is committed and reproducible.
+
+3. **Typosquatting**: Check for packages with names very similar to popular ones (e.g., `lodahs` vs `lodash`).
+
+4. **Pinned versions in CI**: Use exact versions or digests in CI/CD, not ranges.
+
+5. **SBOM generation**: For production applications, recommend generating a Software Bill of Materials:
+   ```bash
+   # Node.js
+   npx @cyclonedx/cyclonedx-npm --output-file sbom.json
+
+   # Python
+   cyclonedx-py environment -o sbom.json
+   ```
+
+## Secrets Management
+
+Secrets in code are a critical and frequent finding. Check for:
+
+- Hardcoded API keys, tokens, passwords, connection strings
+- `.env` files committed to git (check `.gitignore`)
+- Secrets in environment variables that get logged
+- Secrets in Docker build args (visible in image history)
+
+**Detection tools**:
+```bash
+# Gitleaks — scan git history for secrets
+gitleaks detect --source . --verbose
+
+# TruffleHog — scan git history
+trufflehog git file://. --since-commit HEAD~20
+
+# Detect-secrets
+detect-secrets scan --all-files
+```
+
+**Recommended patterns**:
+- Use a secrets manager (AWS Secrets Manager, HashiCorp Vault, GCP Secret Manager, Azure Key Vault)
+- Rotate secrets immediately if leaked; don't just remove from git (history still contains them)
+- Use `git filter-repo` to scrub leaked secrets from history
 
 # Overrides
 
