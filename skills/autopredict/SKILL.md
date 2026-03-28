@@ -1,325 +1,251 @@
 ---
 name: autopredict
-description: Run the AutoPredict prediction market trading agent framework. Scan live Polymarket markets, evaluate trade opportunities with execution-aware metrics, backtest strategies, and iteratively tune agent parameters. Use when asked to "scan markets", "find prediction market edges", "backtest trading strategy", "tune autopredict", or "run autopredict".
-compatibility: Requires python3 (3.10+), pip, and internet access for live Polymarket data. No API keys needed for read-only market scanning. CLOB API credentials required only for live trading (disabled by default).
+description: Wrap the howdymary/autopredict Polymarket trading-agent repo. Use when you need to scan live Polymarket markets, inspect structural event mispricing, evaluate a market with your own fair probability, run reproducible backtests against a JSON dataset, tune strategy parameters safely, or review the repo's paper/live trading scaffolds and failure modes.
 ---
 
 # AutoPredict
 
-A framework for prediction market trading agents. It connects to live Polymarket data, lets you supply your own probability estimates, and evaluates trade opportunities with execution-aware metrics.
+AutoPredict is an execution framework for prediction-market trading. It is **not** a forecasting model.
 
-**The agent does NOT generate predictions.** It optimizes execution given your forecast. The forecasting is your job. The execution is the agent's job.
+- You provide `fair_prob`.
+- The repo evaluates execution quality: side, order type, size, spread, depth, slippage, and risk.
+- Live market reads require internet but no credentials.
+- Real trading is scaffolded, not production-ready.
 
-## Core Capabilities
+This skill was audited against the upstream repository layout and command surface, not just the README.
 
-1. **Live market scanning** — Fetch active markets and real order books from Polymarket (no auth needed for reads)
-2. **Event-level analysis** — Find multi-outcome events where sibling prices don't sum to 1.0 (structural mispricing)
-3. **Execution-aware agent** — Given your `fair_prob`, evaluates edge, spread, liquidity, and book depth before recommending a trade
-4. **Configurable strategy** — All agent parameters are JSON-tunable (edge thresholds, risk limits, sizing)
-5. **Backtesting engine** — Test strategy changes against market data with slippage and fill rate simulation
-6. **Self-learning loop** — Analyze trade logs, identify failure patterns, and auto-tune parameters
+## What Is Real vs Scaffold
 
-## Architecture
+**Reliable entry points**
 
-```
-CLI Layer (predict.py / cli.py)
-  │
-  ├─ Live scanning: predict.py (default entry point)
-  └─ Backtesting:   cli.py backtest / score-latest / learn-analyze
-  │
-  ▼
-Agent Layer (agent.py)                Market Environment (market_env.py)
-├─ AutoPredictAgent                   ├─ OrderBook (depth-aware)
-│  ├─ evaluate_market()               │  ├─ walk_book()
-│  ├─ analyze_performance()           │  ├─ mid_price / spread
-│  └─ propose_improvement()           │  └─ market_impact_estimate
-├─ ExecutionStrategy                  ├─ ExecutionEngine
-│  ├─ decide_order_type()             │  ├─ market_order simulation
-│  ├─ calculate_trade_size()          │  └─ limit_order simulation
-│  └─ split_order()                   └─ Metrics (epistemic/financial/execution)
-└─ AgentConfig (JSON-driven knobs)
-  │
-  ▼
-Configuration
-├─ strategy_configs/{name}.json       (AgentConfig parameters)
-├─ strategy.md                        (human guidance for agent focus)
-└─ config.json                        (experiment paths, bankroll, flags)
-```
+- `python3 predict.py` scans live Polymarket markets.
+- `python3 predict.py --events` inspects multi-outcome event overround / underround.
+- `python3 predict.py --fair 0.60 <condition_id>` evaluates one market using your explicit probability.
+- `python3 -m autopredict.cli backtest --dataset ...` runs an offline backtest.
+- `python3 -m autopredict.cli score-latest` prints the most recent saved metrics JSON.
 
-### Key Separation
+**Partially implemented or scaffold-only**
 
-- **Agent** (mutable): Decision logic — when/how to trade. You change this.
-- **Environment** (fixed): Order book simulation, execution mechanics, metrics. You don't change this.
-- **Config** (tunable): JSON knobs that control agent behavior without code changes.
+- `python3 -m autopredict.cli learn analyze` only works if you already have JSONL trade logs. Plain CLI backtests do **not** create those logs.
+- `python3 -m autopredict.cli learn tune` and `learn improve` are placeholders that point to a nonexistent `scripts/learn_and_improve.py`.
+- `python3 -m autopredict.cli trade-live` is intentionally disabled by config.
+- `scripts/run_paper.py` and `scripts/run_live.py` are deployment scaffolds. `run_live.py` uses a `MockVenueAdapter`, so it is not a real exchange adapter.
+
+## Repo Map
+
+- `predict.py`: live Polymarket scanner and one-off evaluation path.
+- `autopredict/cli.py`: packaged CLI used for backtest, score-latest, and learning commands.
+- `run_experiment.py`: simple offline backtest harness used by `autopredict.cli backtest`.
+- `strategy_configs/*.json`: strategy knobs for offline experiments.
+- `autopredict/_defaults/datasets/sample_markets.json`: bundled sample dataset. Use this when you need a known-good backtest input.
+- `autopredict/learning/tuner.py`: reusable grid-search API. Better than the stub CLI.
+- `scripts/run_paper.py`, `scripts/run_live.py`: paper/live monitoring templates.
+
+## Decision Tree
+
+### 1. Choose the workflow
+
+If the user wants to:
+
+- **Find liquid live markets or structural event mispricing**: use `predict.py` via `scripts/scan_markets.sh`.
+- **Evaluate one market with a known fair probability**: use `predict.py --fair ...`.
+- **Compare strategy configs or produce reproducible metrics**: use `python3 -m autopredict.cli backtest --dataset ...` via `scripts/run_backtest.sh`.
+- **Sweep parameters safely**: use `scripts/tune_params.sh`. Do **not** use `python3 -m autopredict.cli learn tune`.
+- **Inspect trade logs**: use `python3 -m autopredict.cli learn analyze --log-dir ...` only if JSONL logs already exist.
+- **Discuss paper/live deployment scaffolds**: read `docs/DEPLOYMENT.md`, `configs/*.yaml`, and the Python runners before claiming the repo can trade live.
+
+### 2. Choose the command surface
+
+- Use `predict.py` for live reads and one-off agent evaluation.
+- Use `python3 -m autopredict.cli ...` for reproducible offline backtests.
+- Avoid `python3 -m autopredict.backtest.cli ...`; that submodule has brittle import behavior in the current repo state.
+
+### 3. Choose the data source
+
+- For a quick smoke test: use `autopredict/_defaults/datasets/sample_markets.json`.
+- For real research: require a user-supplied dataset of historical snapshots.
+- If the user has no dataset and wants strategy performance claims, stop and say the repo cannot produce a valid backtest without one.
 
 ## Setup
 
-### Clone and install
+Preferred helper:
 
 ```bash
-git clone https://github.com/howdymary/autopredict.git
-cd autopredict
+bash skills/autopredict/scripts/setup.sh --dir /tmp/autopredict
+```
+
+Manual setup:
+
+```bash
+git clone https://github.com/howdymary/autopredict.git /tmp/autopredict
+cd /tmp/autopredict
 python3 -m pip install -e .
-```
-
-### Verify installation
-
-```bash
 python3 predict.py --help
+python3 -m autopredict.cli --help
 ```
 
-## Available Scripts
+After setup, keep work inside the cloned repo when invoking upstream commands.
 
-This skill bundles helper scripts for common workflows:
+## Opinionated Workflows
 
-- **`scripts/setup.sh`** — Clone repo, install deps, verify setup
-- **`scripts/scan_markets.sh`** — Scan live markets with configurable filters
-- **`scripts/run_backtest.sh`** — Run a backtest with a given strategy config
-- **`scripts/tune_params.sh`** — Grid search over parameter space
+### Workflow A: Fast live market triage
 
-## Workflows
-
-### 1. Scan Live Markets
-
-The primary entry point for market discovery:
+Use this when the user wants ideas, not a PnL claim.
 
 ```bash
-cd autopredict
-python3 predict.py                              # scan top markets by volume
-python3 predict.py --top 10 --verbose           # detailed view of top 10
-python3 predict.py --category politics           # filter by category
-python3 predict.py --min-liquidity 5000          # only liquid markets
-python3 predict.py --events                      # find multi-outcome mispricing
+cd /tmp/autopredict
+python3 predict.py --top 10 --verbose
+python3 predict.py --events --top 10
 ```
 
-**What to look for:**
-- Markets with tight spreads (<4%) and deep books
-- Event groups where sibling probabilities don't sum to ~1.0
-- Markets where you have domain expertise to form a `fair_prob`
+Interpretation:
 
-### 2. Evaluate a Specific Market
+- Prefer markets with tight spreads and visible depth.
+- Treat event underround as a structural clue, not automatic free money.
+- Only move to trade evaluation once you can justify a `fair_prob`.
 
-When you have an opinion on a market's true probability:
+### Workflow B: Evaluate a single conviction
+
+Use this when the user already has a thesis on one market.
 
 ```bash
+cd /tmp/autopredict
 python3 predict.py --fair 0.60 <condition_id>
 ```
 
-This will:
-1. Fetch real market data + order book
-2. Compute edge (your `fair_prob` vs market price)
-3. Run the AutoPredict agent to recommend: side, size, order type, limit price
-4. Show execution-quality metrics (spread, depth, slippage estimate)
+Important caveat:
 
-### 3. Run a Backtest
+- `predict.py --fair` constructs `AutoPredictAgent(AgentConfig())` directly.
+- That means it uses default agent parameters, not `strategy_configs/baseline.json` or your edited JSON config.
+- Use it as a default-policy sanity check, not as proof that a tuned config behaves the same way.
 
-Test strategy changes against historical data:
+### Workflow C: Backtest a strategy config
+
+Use this when the user wants reproducible metrics or config comparisons.
 
 ```bash
-# Default backtest with baseline config
-python3 -m autopredict.cli backtest
+cd /tmp/autopredict
+python3 -m autopredict.cli backtest \
+  --config strategy_configs/baseline.json \
+  --dataset autopredict/_defaults/datasets/sample_markets.json
 
-# Custom config
-python3 -m autopredict.cli backtest --config strategy_configs/optimized.json
-
-# Score the latest run
 python3 -m autopredict.cli score-latest
 ```
 
-### 4. Iterative Strategy Tuning
+Opinionated rule:
 
-The core improvement loop:
+- Always pass `--dataset`.
+- The repo default `config.json` sets `"default_dataset": null`.
+- Running `python3 -m autopredict.cli backtest` with no dataset currently throws a `TypeError`.
 
-```bash
-# 1. Establish baseline
-python3 -m autopredict.cli backtest --config strategy_configs/baseline.json
-python3 -m autopredict.cli score-latest
+### Workflow D: Tune parameters
 
-# 2. Modify one parameter
-# Edit strategy_configs/candidate.json — change ONE knob
-
-# 3. Run candidate
-python3 -m autopredict.cli backtest --config strategy_configs/candidate.json
-python3 -m autopredict.cli score-latest
-
-# 4. Compare metrics — keep or discard
-# 5. Repeat
-```
-
-### 5. Analyze Trade Performance
-
-After backtesting or live monitoring:
+Use the bundled helper instead of the stub CLI:
 
 ```bash
-python3 -m autopredict.cli learn-analyze
-python3 -m autopredict.cli learn-analyze --log-dir state/trades --last 50
+bash skills/autopredict/scripts/tune_params.sh \
+  --dir /tmp/autopredict \
+  --dataset autopredict/_defaults/datasets/sample_markets.json \
+  --param min_edge 0.03,0.05,0.08 \
+  --param aggressive_edge 0.10,0.12,0.15
 ```
 
-Identifies:
-- Win rate by category/market type
-- Systematic failure patterns (e.g., wide-spread markets losing)
-- Calibration error between your forecasts and outcomes
-- Parameter adjustment recommendations
+Opinionated tuning rules:
 
-### 6. Parameter Grid Search
+- Start with 1-2 parameters, not 6.
+- Prefer `sharpe` or `total_pnl` only after sample size is reasonable.
+- Reject “best” configs with too few trades.
+- Save every run; do not trust memory or terminal output.
 
-Automated tuning over parameter space:
+### Workflow E: Review learning / deployment scaffolds
 
-```bash
-python3 -m autopredict.cli learn-tune \
-  --param min_edge 0.03 0.05 0.08 \
-  --param aggressive_edge 0.10 0.12 0.15 \
-  --param max_risk_fraction 0.01 0.02 0.03
-```
+Use this when the user asks about self-improvement, paper trading, or live trading.
 
-## Strategy Configuration
+- `autopredict.learning.tuner.GridSearchTuner` is real and reusable.
+- `python3 -m autopredict.cli learn tune` is just a message, not a tuning engine.
+- `scripts/run_paper.py` is a monitoring loop template; it does not fetch real markets or execute the full agent logic.
+- `scripts/run_live.py` requires confirmation and safety flags, but still uses `MockVenueAdapter`, so it cannot trade a real venue out of the box.
 
-### AgentConfig Parameters
+## Strategy Knobs That Matter
 
-All tunable via `strategy_configs/{name}.json`:
+Main JSON parameters in `strategy_configs/*.json`:
 
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `min_edge` | 0.05 | Minimum edge (probability units) to consider a trade |
-| `aggressive_edge` | 0.12 | Edge threshold for market orders (vs limit) |
-| `max_risk_fraction` | 0.02 | Max loss per trade as % of bankroll |
-| `max_position_notional` | 25.0 | Hard cap on position size ($) |
-| `min_book_liquidity` | 60.0 | Minimum visible depth to trade |
-| `max_spread_pct` | 0.04 | Max spread before rejecting |
-| `max_depth_fraction` | 0.15 | Max trade as fraction of visible depth |
-| `split_threshold_fraction` | 0.25 | Threshold for splitting orders |
-| `passive_requote_fraction` | 0.25 | Reserved for passive order re-quoting |
+- `min_edge`: minimum edge before any trade is considered.
+- `aggressive_edge`: threshold for using market orders more aggressively.
+- `max_risk_fraction`: position sizing as fraction of bankroll.
+- `max_position_notional`: hard dollar cap per order.
+- `min_book_liquidity`: minimum visible depth required.
+- `max_spread_pct`: spread filter.
+- `max_depth_fraction`: cap as fraction of visible depth.
+- `split_threshold_fraction`: start slicing when order is too large relative to depth.
 
-### Tuning Guidelines
+Opinionated tuning guidance:
 
-**Start conservative, loosen one knob at a time:**
+- Lower `min_edge` only if trade count is too low.
+- Raise `aggressive_edge` if slippage is the dominant problem.
+- Lower `max_depth_fraction` before touching risk caps when market impact is the problem.
+- Do not loosen spread and liquidity filters at the same time; you will not know which one caused the regression.
 
-1. **More trades?** Lower `min_edge` (0.05 → 0.03). Risk: worse average quality.
-2. **More aggressive execution?** Lower `aggressive_edge` (0.12 → 0.08). Risk: more slippage.
-3. **Larger positions?** Raise `max_risk_fraction` (0.02 → 0.03). Risk: bigger drawdowns.
-4. **Thinner markets?** Lower `min_book_liquidity` (60 → 30). Risk: poor fills.
-5. **Wider spreads?** Raise `max_spread_pct` (0.04 → 0.06). Risk: execution drag.
+## Failure Modes and Edge Cases
 
-**Never change more than one parameter per experiment.** Measure the effect, then decide.
+### Backtest failures
 
-## Metrics
+- **`TypeError` before the backtest starts**: almost always because no `--dataset` was passed and `default_dataset` is `null`.
+- **`No metrics.json found under state directory`**: `score-latest` was run before a successful backtest.
+- **Malformed JSON errors**: invalid strategy config or dataset schema.
 
-Three groups of metrics, all computed via `evaluate_all()`:
+### Learning workflow failures
 
-### Epistemic Metrics
-- **Brier Score** — Mean squared error of probability forecasts (lower is better, target <0.20)
-- **Calibration by bucket** — Accuracy within probability bins (0.0-0.1, 0.1-0.2, etc.)
+- **`learn analyze` reports no logs**: expected unless you created JSONL logs with `TradeLogger` or a scaffold that writes them.
+- **`learn tune` / `learn improve` prints advice only**: expected. Those subcommands are placeholders.
+- **Docs mention `scripts/learn_and_improve.py`**: that script does not exist in the audited upstream repo.
 
-### Financial Metrics
-- **Total PnL** — Sum of realized gains/losses
-- **Sharpe Ratio** — Risk-adjusted returns (target >1.0)
-- **Max Drawdown** — Largest peak-to-trough decline (target <50%)
-- **Win Rate** — Fraction of profitable trades (target >50%)
+### Live / paper trading confusion
 
-### Execution Metrics
-- **Avg Slippage (bps)** — How much worse than mid price (target <10 bps limit, <30 bps market)
-- **Fill Rate** — Fraction of requested size filled (market: 0.8-1.0, limit: 0.15-0.75)
-- **Spread Capture (bps)** — Profit from passive order placement (target >0)
-- **Market Impact (bps)** — Price movement caused by trade (target <50 bps)
-- **Implementation Shortfall (bps)** — Total cost: slippage + fees (target <30 bps)
-- **Adverse Selection Rate** — Fraction of limit orders that moved against you (target <20%)
+- **Paper trading is not the same as live market scanning**: `run_paper.py` is a loop scaffold, not an end-to-end paper execution engine over Polymarket.
+- **Live trading docs sound complete, but adapter is mock**: `run_live.py` cannot place real venue orders without extra implementation.
+- **`trade-live` CLI is disabled**: `config.json` defaults `live_trading_enabled` to `false`.
 
-## Strategy Guidance File
+### Command-path gotchas
 
-`strategy.md` provides human-readable context for the agent's focus areas:
+- **Do not use `python3 -m autopredict.backtest.cli`** in this repo state unless you are ready to debug import-path issues.
+- **Do not assume root docs and packaged CLI are fully synchronized**. The package path under `autopredict/` is the safer source of truth.
+- **Do not claim config changes affect `predict.py --fair`** unless you verified the code path. It currently ignores `strategy_configs/*.json`.
 
-```markdown
-# AutoPredict Strategy Guidance
+## Helper Scripts Bundled With This Skill
 
-## Current focus
-- Improve execution quality before chasing more raw PnL
-- Prefer smaller orders in thin books
-- Use passive orders when edge is real but not urgent
+- `scripts/setup.sh`: clone, install, verify, and smoke-test the repo.
+- `scripts/scan_markets.sh`: wrapper around `predict.py` for live scan / `--events` / `--fair` paths.
+- `scripts/run_backtest.sh`: safe backtest wrapper that always provides a dataset or fails with a useful error.
+- `scripts/tune_params.sh`: grid-search wrapper that bypasses the upstream stub tuning CLI.
 
-## Hard constraints
-- Never risk more than 2% of bankroll on one market snapshot
-- Avoid markets with visible depth below the configured minimum
+## Recommended Agent Behavior
 
-## Research questions
-- Are weak-edge market orders causing slippage drag?
-- Does time-to-expiry justify more aggressive execution?
-```
+When using this skill:
 
-Update this file as your understanding evolves. The agent reads it for context.
+- Lead with the limitation that AutoPredict optimizes execution, not prediction.
+- Ask where `fair_prob` comes from before discussing edges as if they were alpha.
+- Require a dataset for any serious backtest claim.
+- Separate “works in the repo” from “documented in the repo”.
+- Treat paper/live trading as architecture review unless the user is explicitly asking to extend the scaffold.
 
-## Integration with Autoresearch
+## Autoresearch Pairing
 
-AutoPredict pairs naturally with the **autoresearch** skill for disciplined optimization:
+Use this skill with `autoresearch` when the user wants disciplined tuning.
 
-1. Use autoresearch to define the optimization target (e.g., Sharpe ratio, slippage)
-2. Use autopredict's backtest as the `autoresearch.sh` workload
-3. Let autoresearch manage the experiment loop, hypothesis tracking, and reporting
-4. AutoPredict provides the domain-specific metrics
+Recommended setup:
 
-Example `autoresearch.sh` for AutoPredict optimization:
+1. Define the target metric, usually `sharpe`, `total_pnl`, or `avg_slippage_bps`.
+2. Use `scripts/run_backtest.sh` or `scripts/tune_params.sh` as the experiment workload.
+3. Keep one hypothesis per run.
+4. Store configs and metrics under a dated output directory.
 
-```bash
-#!/bin/bash
-set -euo pipefail
-cd /path/to/autopredict
-python3 -m autopredict.cli backtest --config strategy_configs/candidate.json 2>/dev/null
-METRICS=$(python3 -m autopredict.cli score-latest 2>/dev/null)
-SHARPE=$(echo "$METRICS" | python3 -c "import json,sys; print(json.load(sys.stdin).get('sharpe_ratio', 0))")
-echo "METRIC sharpe=$SHARPE"
-```
+Good autoresearch prompt framing:
 
-## Environment Variables
+- “Optimize `aggressive_edge` and `max_depth_fraction` for lower slippage without collapsing trade count.”
+- “Improve Sharpe on this dataset while keeping max drawdown below 35%.”
 
-For read-only scanning (default), no credentials needed.
+Bad framing:
 
-For authenticated CLOB access (future live trading):
-
-```bash
-export POLYMARKET_API_KEY="..."
-export POLYMARKET_API_SECRET="..."
-export POLYMARKET_PASSPHRASE="..."
-export POLYMARKET_PK="..."           # wallet private key (optional)
-export POLYMARKET_FUNDER="..."       # funder address (optional)
-```
-
-**Live trading is disabled by default** (`live_trading_enabled: false` in config.json).
-
-## File Reference
-
-| File | Purpose |
-|------|---------|
-| `predict.py` | Live market scanner — main entry point |
-| `agent.py` | Mutable trading agent with tunable knobs |
-| `market_env.py` | Fixed order book simulation and execution |
-| `cli.py` | CLI for backtest, scoring, analysis |
-| `config.json` | Experiment harness configuration |
-| `strategy.md` | Human guidance for agent focus |
-| `strategy_configs/` | JSON parameter configs (baseline, optimized, etc.) |
-| `autopredict/markets/polymarket.py` | Polymarket API adapter (Gamma + CLOB) |
-| `autopredict/strategies/` | Strategy implementations |
-| `autopredict/backtest/` | Backtest engine and metrics |
-| `autopredict/learning/` | Performance analysis and auto-tuning |
-| `autopredict/live/` | Live monitoring and risk management |
-| `autopredict/config/` | Config loading and validation |
-
-## Common Pitfalls
-
-### 1. Confusing market artifacts with real arbitrage
-
-Multi-outcome events (e.g., "Who wins the Masters?") have sibling probabilities that sum to >1.0 by design. This is a grouping artifact, not arbitrage. Real binary arbitrage requires exactly two outcomes where one MUST happen.
-
-### 2. Overfitting to backtest data
-
-Strategy configs tuned on one dataset may not generalize. Use walk-forward testing (`enable_walk_forward: true`) and out-of-sample validation.
-
-### 3. Ignoring execution costs
-
-A strategy that looks good on mid-price fills may be unprofitable after slippage, spread, and market impact. Always evaluate execution metrics alongside PnL.
-
-### 4. Changing multiple parameters at once
-
-One change per experiment. If you change `min_edge` and `aggressive_edge` simultaneously, you can't attribute the result to either change.
-
-### 5. Treating the agent as a forecaster
-
-AutoPredict does not predict outcomes. It takes your `fair_prob` and decides whether/how to trade. Bad forecasts in → bad trades out, regardless of how good the execution engine is.
+- “Make it profitable” with no dataset.
+- “Tune everything” with no metric priority.
