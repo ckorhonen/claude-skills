@@ -1,6 +1,6 @@
 ---
 name: content-trend-researcher
-description: Advanced content and topic research skill that analyzes trends across Google Analytics, Google Trends, Substack, Medium, Reddit, LinkedIn, X, blogs, podcasts, and YouTube to generate data-driven article outlines based on user intent analysis
+description: Research content trends and generate data-driven article outlines by analyzing Google Trends, Reddit, LinkedIn, X, Substack, Medium, YouTube, and more. Use when asked to research content ideas, find trending topics, generate article outlines, analyze audience intent, or when user says "what should I write about", "find trending topics in X", or "research content ideas".
 ---
 
 # Content Trend Researcher

@@ -1,6 +1,6 @@
 ---
 name: executing-plans
-description: Execute a written implementation plan in batches with checkpoint-based review. Use when you have a plan document (from writing-plans or brainstorming) and need to implement it task-by-task with architect feedback between batches. Ensures disciplined execution with verification at each step.
+description: Execute a written implementation plan with review checkpoints and structured progress tracking. Use when you have a spec or plan ready to implement, when user says "execute this plan", "implement this spec", "carry out these steps", or "start working on the plan".
 ---
 
 # Executing Plans

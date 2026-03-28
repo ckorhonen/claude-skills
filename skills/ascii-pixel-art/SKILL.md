@@ -1,3 +1,8 @@
+---
+name: ascii-pixel-art
+description: Generate animated ASCII art from images with subject detection, blurred pixelated backgrounds, and dynamic visual effects. Use when asked to create ASCII art, convert an image to ASCII, generate pixel art, add animated text art effects, or make retro-style visual art from photos.
+---
+
 # ASCII Pixel Art Generator
 
 Generate animated ASCII art from images with subject detection, blurred pixelated backgrounds, and dynamic visual effects.

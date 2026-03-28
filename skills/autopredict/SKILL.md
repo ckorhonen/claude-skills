@@ -5,6 +5,38 @@ description: Wrap the howdymary/autopredict Polymarket trading-agent repo. Use w
 
 # AutoPredict
 
+## Quick Start — Simple Examples
+
+New to AutoPredict? Start here before reading the full docs.
+
+**1. Scan what's trending on Polymarket right now**
+```bash
+python3 predict.py --top 10
+```
+Shows the 10 most active markets with spreads, depth, and overround signals.
+
+**2. Show me the 5 most liquid markets**
+```bash
+python3 predict.py --top 5 --verbose
+```
+Lists markets sorted by liquidity with full execution details.
+
+**3. Browse multi-outcome events for structural mispricing**
+```bash
+python3 predict.py --events --top 10
+```
+Checks whether event probabilities sum to more or less than 100%.
+
+**4. What does the order book look like for a specific market?**
+```bash
+python3 predict.py --fair 0.55 <condition_id>
+```
+Replace `<condition_id>` with the Polymarket ID. Provide your own fair probability estimate and AutoPredict evaluates the trade.
+
+> Run `python3 predict.py --help` for all flags. No credentials required for live reads.
+
+---
+
 AutoPredict is an execution framework for prediction-market trading. It is **not** a forecasting model.
 
 - You provide `fair_prob`.

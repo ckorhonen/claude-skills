@@ -1,6 +1,6 @@
 ---
 name: seo-optimizer
-description: This skill should be used when analyzing HTML/CSS websites for SEO optimization, fixing SEO issues, generating SEO reports, or implementing SEO best practices. Use when the user requests SEO audits, optimization, meta tag improvements, schema markup implementation, sitemap generation, or general search engine optimization tasks.
+description: Analyze and optimize websites for search engine visibility. Use when asked to run an SEO audit, improve page rankings, fix meta tags, add schema markup, generate a sitemap, optimize for Core Web Vitals, or when user says "improve my SEO", "audit this site's SEO", or "help me rank higher on Google".
 ---
 
 # SEO Optimizer
