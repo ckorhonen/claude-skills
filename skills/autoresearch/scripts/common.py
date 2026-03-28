@@ -401,8 +401,8 @@ def svg_line_chart(
     {grid_lines}
     <polyline fill="none" stroke="#2563eb" stroke-width="3" points="{points}" />
     {circles}
-    <text x="{padding}" y="20" fill="#111827" font-size="12">{min_value:.4f} {html.escape(unit)}</text>
-    <text x="{padding}" y="{height - 10}" fill="#111827" font-size="12">{max_value:.4f} {html.escape(unit)}</text>
+    <text x="{padding}" y="20" fill="#111827" font-size="12">{max_value:.4f} {html.escape(unit)}</text>
+    <text x="{padding}" y="{height - 10}" fill="#111827" font-size="12">{min_value:.4f} {html.escape(unit)}</text>
   </svg>
 </section>
 """.strip()
