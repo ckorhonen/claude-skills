@@ -1,6 +1,6 @@
 ---
 name: shadertoy
-description: This skill should be used when working with Shadertoy shaders, GLSL fragment shaders, or creating procedural graphics for the web. Use when writing .glsl files, implementing visual effects, creating generative art, or working with WebGL shader code. This skill provides GLSL ES syntax reference, common shader patterns, and Shadertoy-specific conventions.
+description: Write, debug, and optimize Shadertoy shaders and GLSL fragment shaders for procedural graphics. Use when creating visual effects, generative art, or WebGL shaders; when writing .glsl files; or when user says "write a shader", "make a Shadertoy effect", "help with GLSL", or "create a procedural animation".
 ---
 
 # Shadertoy Shader Development

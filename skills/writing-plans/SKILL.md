@@ -1,6 +1,6 @@
 ---
 name: writing-plans
-description: Write a comprehensive, bite-sized implementation plan from a spec or design. Use after brainstorming produces an approved design, or when given requirements for a multi-step task before touching code. Produces plans that executing-plans can follow task-by-task with zero ambiguity.
+description: Write structured implementation plans from specs or requirements before touching code. Use when given a spec, requirements doc, or feature description, when user says "plan this out", "write a plan for", "how should we implement", or before starting any multi-step coding task.
 ---
 
 # Writing Plans

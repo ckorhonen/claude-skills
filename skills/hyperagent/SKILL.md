@@ -6,6 +6,45 @@ compatibility: Requires python3, git. The bundled scripts use only the Python st
 
 # Hyperagent
 
+## Quick Start — Simple Examples
+
+New to Hyperagent? Try these beginner-friendly tasks before the full setup.
+
+**1. Optimize a simple Python script to run faster**
+
+Say: _"Use hyperagent to optimize this script for speed"_ and paste something like:
+```python
+# slow_sort.py
+def sort_numbers(nums):
+    result = []
+    while nums:
+        smallest = min(nums)
+        result.append(smallest)
+        nums.remove(smallest)
+    return result
+```
+Hyperagent will benchmark it, propose a faster implementation, and validate the improvement.
+
+**2. Improve a prompt to get better answers**
+
+Say: _"Run hyperagent on this prompt and improve accuracy"_ with a prompt like:
+```
+Summarize this article in one sentence.
+```
+The meta-agent iterates on the prompt, measures quality, and keeps improvements that score higher.
+
+**3. Make a sorting function more efficient**
+
+Say: _"Evolve this function with hyperagent"_ and paste any function. Hyperagent creates a benchmark, runs generations of improvements, and shows you the performance gain per generation.
+
+**4. Self-improve any script**
+
+Say: _"Self-improve this agent/script"_ and point to any Python file. Hyperagent wraps it in an evaluation loop, proposes modifications, and tracks what works.
+
+> The simplest possible setup: create `task.sh` that prints `METRIC score=0.5`, then run `python3 scripts/init_session.py`. From there the loop is fully automated.
+
+---
+
 Self-referential self-improvement: a meta-agent that modifies a task-agent (and itself) to optimize any measurable objective.
 
 Inspired by Facebook Research's *Hyperagents* paper (arXiv:2603.19461), which demonstrated that agents combining a task-solver and a self-modifying meta-level into a single editable program can achieve open-ended, compounding improvements that transfer across domains.

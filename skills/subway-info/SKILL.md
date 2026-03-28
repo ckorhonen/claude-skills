@@ -1,6 +1,6 @@
 ---
 name: subway-info
-description: Get real-time NYC transit information — subway, bus, ferry, and commuter rail — via the subway-info CLI or REST API at subwayinfo.nyc.
+description: Get real-time NYC transit information — subway, bus, ferry, and commuter rail — via the subway-info CLI or REST API at subwayinfo.nyc. Use when asked about NYC subway status, train times, bus routes, ferry schedules, transit delays, MTA service alerts, or "what's the next train to X".
 ---
 
 # Subway Info
