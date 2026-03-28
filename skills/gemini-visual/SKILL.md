@@ -1,13 +1,13 @@
 ---
 name: gemini-visual
-description: Visual and front-end development assistant powered by Google Gemini 3. Use for UI analysis, design comparison, accessibility audits, color palette extraction, screenshot-to-code conversion, generating UI assets, and text-based design assistance from briefs.
+description: Visual and front-end development assistant powered by Google Gemini's multimodal models. Use for UI analysis, design comparison, accessibility audits, color palette extraction, screenshot-to-code conversion, generating UI assets, and text-based design assistance from briefs.
 ---
 
 # Gemini Visual - Front-End & Visual Development Assistant
 
 ## Overview
 
-A comprehensive toolkit leveraging Google Gemini 3's advanced visual reasoning capabilities for front-end development and design tasks. Gemini 3 provides state-of-the-art multimodal understanding with spatial reasoning, document understanding, and high-resolution image processing.
+A comprehensive toolkit leveraging Google Gemini's advanced visual reasoning capabilities for front-end development and design tasks. Gemini provides state-of-the-art multimodal understanding with spatial reasoning, document understanding, and high-resolution image processing.
 
 ## When to Use
 
@@ -64,10 +64,15 @@ echo 'export GEMINI_API_KEY="your-api-key"' >> ~/.zshrc
 
 ## Available Models
 
-| Model | Best For | Context |
-|-------|----------|---------|
-| `gemini-3-pro-preview` | Visual analysis, code generation, complex reasoning | 1M input, 64k output |
-| `gemini-3-pro-image-preview` | Asset generation, image editing | 65k input, 32k output |
+| Model | Best For | Notes |
+|-------|----------|-------|
+| `gemini-2.5-flash` | Visual analysis, code generation, fast reasoning | Best cost/quality for analysis |
+| `gemini-2.5-pro` | Complex visual reasoning, code generation | Highest quality analysis |
+| `gemini-2.5-flash-image-preview` | Asset generation, image editing | Native image output |
+| `gemini-3.1-flash-image-preview` | High-quality image generation, 4K output | Latest image generation model |
+| `gemini-3-pro-image-preview` | Professional image generation | Previous-gen high quality |
+
+> **Note:** For image *analysis* tasks (analyze_ui, compare_designs, screenshot_to_code, extract_colors), use the text+vision models (`gemini-2.5-flash` or `gemini-2.5-pro`). For image *generation* tasks (generate_ui_assets), use the image-output models.
 
 ## Media Resolution Options
 
@@ -553,7 +558,7 @@ Higher resolution provides better accuracy but uses more tokens.
 
 ## Sources
 
-- [Gemini 3 Developer Guide](https://ai.google.dev/gemini-api/docs/gemini-3)
+- [Gemini Models Reference](https://ai.google.dev/gemini-api/docs/models)
 - [Image Understanding](https://ai.google.dev/gemini-api/docs/image-understanding)
 - [Image Generation](https://ai.google.dev/gemini-api/docs/image-generation)
-- [Google Developers Blog - Gemini 3](https://developers.googleblog.com/new-gemini-api-updates-for-gemini-3/)
+- [Google AI Studio](https://aistudio.google.com/)
