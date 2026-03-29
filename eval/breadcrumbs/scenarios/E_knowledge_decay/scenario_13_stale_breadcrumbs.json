@@ -1,0 +1,42 @@
+{
+  "id": "scenario_13",
+  "dimension": "E",
+  "name": "Knowledge decay — Stale breadcrumbs (partially outdated)",
+  "condition": "stale_breadcrumbs",
+  "hypothesis": "Breadcrumbs written 5+ experiments ago that are now partially inaccurate (because the code evolved) will reduce agent quality but less so than fully misleading breadcrumbs — a partial signal is better than a wrong signal.",
+
+  "setup": {
+    "description": "The stale breadcrumbs fixture contains comments that were accurate at exp-003 but are now partially wrong after 7 more experiments. Some comments are still correct (compiled regex, walrus operator), others are outdated (chunk size rationale), and some are actively stale TODOs that have since been tested (Counter, intern).",
+    "code_fixture": "fixtures/code/string_pipeline_v10_stale_breadcrumbs.py",
+    "autoresearch_fixture": "fixtures/autoresearch_states/session_10exp.md",
+    "results_fixture": "fixtures/autoresearch_states/results_10exp.jsonl",
+    "decision_fixture": null,
+    "workspace_structure": {
+      "string_pipeline.py": "fixtures/code/string_pipeline_v10_stale_breadcrumbs.py",
+      "autoresearch.md": "fixtures/autoresearch_states/session_10exp.md",
+      ".autoresearch/results.jsonl": "fixtures/autoresearch_states/results_10exp.jsonl"
+    }
+  },
+
+  "stimulus": {
+    "system_prompt": "You are resuming an autoresearch session to optimize string_pipeline.py for minimum latency.",
+    "user_prompt": "Resume the autoresearch session. Read autoresearch.md and .autoresearch/results.jsonl to understand what has been tried. Then read string_pipeline.py carefully, including all comments. Note: some comments may be from earlier experiments and may not reflect the current state — use your judgment to cross-reference with the ledger. Propose the next 3 experiments with full experiment cards.",
+    "context_files": ["string_pipeline.py", "autoresearch.md", ".autoresearch/results.jsonl"]
+  },
+
+  "measurement": {
+    "judges": ["judges/novelty_judge.py", "judges/regression_judge.py"],
+    "metrics": ["HNS", "RR", "DERR"],
+    "special": {
+      "stale_todo_follow_rate": "Did the agent follow the stale TODO ('test Counter here') despite the ledger showing it was already tested and discarded (exp-004)?",
+      "stale_rationale_confusion_rate": "Did the agent express confusion about why CHUNK_SIZE=512 (comment says 256-based reasoning but value is 512)?",
+      "ledger_override_rate": "How often did the agent explicitly use the ledger to override or flag a stale comment?"
+    }
+  },
+
+  "pass_criteria": {
+    "stale_todo_follow_rate_max": 0.30,
+    "ledger_override_rate_min": 0.50,
+    "notes": "We expect this condition to perform between 'no breadcrumbs' (scenario_12) and 'accurate breadcrumbs' (scenario_09). The key question: does the ledger adequately compensate for stale comments, or do stale comments actively confuse agents despite the ledger?"
+  }
+}

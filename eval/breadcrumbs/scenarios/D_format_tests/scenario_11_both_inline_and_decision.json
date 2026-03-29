@@ -1,0 +1,38 @@
+{
+  "id": "scenario_11",
+  "dimension": "D",
+  "name": "Format test — BOTH inline comments AND DECISION.md",
+  "condition": "inline_and_decision_md",
+  "hypothesis": "Combining inline comments with a DECISION.md provides maximum context but may cause redundancy. The question is whether the overlap helps (reinforcement) or hurts (context bloat).",
+
+  "setup": {
+    "description": "v10 code WITH inline comments. DECISION.md also present. Maximum breadcrumb density condition.",
+    "code_fixture": "fixtures/code/string_pipeline_v10_with_breadcrumbs.py",
+    "autoresearch_fixture": "fixtures/autoresearch_states/session_10exp.md",
+    "results_fixture": "fixtures/autoresearch_states/results_10exp.jsonl",
+    "decision_fixture": "fixtures/decisions/DECISION_v10.md",
+    "workspace_structure": {
+      "string_pipeline.py": "fixtures/code/string_pipeline_v10_with_breadcrumbs.py",
+      "autoresearch.md": "fixtures/autoresearch_states/session_10exp.md",
+      ".autoresearch/results.jsonl": "fixtures/autoresearch_states/results_10exp.jsonl",
+      "DECISION.md": "fixtures/decisions/DECISION_v10.md"
+    }
+  },
+
+  "stimulus": {
+    "system_prompt": "You are resuming an autoresearch session to optimize string_pipeline.py for minimum latency.",
+    "user_prompt": "Resume the autoresearch session. A DECISION.md file with architecture decisions is available. Propose the next 3 experiments with full experiment cards.",
+    "context_files": ["string_pipeline.py", "autoresearch.md", ".autoresearch/results.jsonl", "DECISION.md"]
+  },
+
+  "measurement": {
+    "judges": ["judges/novelty_judge.py", "judges/regression_judge.py"],
+    "metrics": ["HNS", "RR", "DERR", "SBT", "TOR"]
+  },
+
+  "pass_criteria": {
+    "HNS_min": 0.70,
+    "RR_max": 0.05,
+    "notes": "TOR will be highest in this condition. Compare quality metrics against scenarios 09 and 10. If quality is similar but TOR is much higher, DECISION.md alone may be the better format."
+  }
+}
