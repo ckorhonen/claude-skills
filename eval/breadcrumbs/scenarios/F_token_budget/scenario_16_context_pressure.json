@@ -1,0 +1,42 @@
+{
+  "id": "scenario_16",
+  "dimension": "F",
+  "name": "Token budget — Context pressure regression threshold",
+  "condition": "high_density_breadcrumbs",
+  "hypothesis": "At some breadcrumb density, the added context tokens begin to crowd out other important context (long results.jsonl, large codebase), leading to quality REGRESSIONS. This scenario tests where that threshold is.",
+
+  "setup": {
+    "description": "Simulate a session with a very large codebase (multiple files) and a very long results.jsonl (20+ experiments). Add increasingly dense breadcrumbs until we can measure quality degradation. Uses synthetic 'large session' fixtures.",
+    "generate_fixtures": true,
+    "fixture_generator": "scripts/build_fixtures.sh --large-session",
+    "large_session_parameters": {
+      "code_files": 5,
+      "total_code_tokens_approx": 8000,
+      "experiment_count": 20,
+      "results_jsonl_tokens_approx": 15000,
+      "breadcrumb_densities": [0.0, 0.05, 0.10, 0.20, 0.35, 0.50]
+    },
+    "note": "breadcrumb_density = breadcrumb_tokens / (code_tokens + breadcrumb_tokens)"
+  },
+
+  "stimulus": {
+    "system_prompt": "You are resuming an autoresearch session to optimize a multi-file string processing pipeline.",
+    "user_prompt": "Resume the autoresearch session. Read autoresearch.md and .autoresearch/results.jsonl. Then read all source files. Propose the next 3 experiments with full experiment cards.",
+    "context_files": ["*.py", "autoresearch.md", ".autoresearch/results.jsonl"]
+  },
+
+  "measurement": {
+    "run_for_each_density": true,
+    "judges": ["judges/novelty_judge.py", "judges/regression_judge.py"],
+    "metrics": ["HNS", "RR", "DERR", "SBT", "TOR"],
+    "plot": "HNS and RR as a function of breadcrumb_density",
+    "find_inflection_point": "At what TOR value does HNS begin to decrease or RR begin to increase?"
+  },
+
+  "pass_criteria": {
+    "note": "No binary pass/fail. Produces a threshold curve: 'breadcrumbs up to TOR=X improve quality; beyond that, quality degrades'.",
+    "expected_finding": "HNS peaks at some intermediate TOR, then decreases as breadcrumb tokens crowd out context. The optimal TOR is the inflection point."
+  },
+
+  "meta_recommendation": "Use this scenario's output to set a CHUNK_SIZE equivalent for breadcrumbs — a maximum comment density beyond which further breadcrumbs should be moved to DECISION.md instead."
+}
