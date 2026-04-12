@@ -426,6 +426,13 @@ Skills are located in the `skills/` directory.
 
 ### Planning & Process
 
+#### [`idea-md`](./skills/idea-md)
+> Create or expand `Idea.md` / `IDEA.md` files from rough descriptions, repo context, conversation history, or notes
+
+- `Turn a brainstorm or chat transcript into a durable concept brief before writing a PRD`
+- `Expand a rough idea draft into a structured document with problem, users, MVP, and validation steps`
+- `Create a repo-grounded Idea.md that reflects existing packages, constraints, and technical leverage`
+
 #### [`brainstorming`](./skills/brainstorming)
 > Structured exploration of user intent, requirements, and design before implementation
 
@@ -446,7 +453,6 @@ Skills are located in the `skills/` directory.
 - `Turn a 2-page product spec into a phased implementation plan with clear task dependencies and time estimates`
 - `Create an architecture plan for a new microservice that sequences schema, API, and client work`
 - `Decompose a "migrate from REST to GraphQL" initiative into safe, reviewable milestones`
-
 
 ### Meta & Skill Management
 
