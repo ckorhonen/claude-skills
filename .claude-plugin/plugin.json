@@ -1,0 +1,10 @@
+{
+  "name": "claude-skills",
+  "version": "0.1.0",
+  "description": "A broad collection of 45+ Claude Code skills spanning development, design, marketing, AI, security, and infrastructure. See cdd.dev/skills.",
+  "author": {
+    "name": "Chris Korhonen"
+  },
+  "repository": "https://github.com/ckorhonen/claude-skills",
+  "keywords": ["claude-code","codex","agent-skills","claude-plugins","llm-tools","ai-agents"]
+}
