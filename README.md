@@ -15,7 +15,6 @@ This repo is the broad collection — wider in scope, more varied in purpose.
 
 Here are some skills I've found useful for various projects I've been building. Would love feedback if anyone else finds them useful—have at it! If you're interested in some of my writings on AI and software development, follow me at [CDD.dev](https://cdd.dev).
 
-
 ## Available Skills
 
 Skills are located in the `skills/` directory.
@@ -120,7 +119,6 @@ Skills are located in the `skills/` directory.
 - `Isolate whether a performance regression is in the database layer or application code`
 - `Trace a production 500 error back to its root cause using logs and minimal reproduction`
 
-
 ### Visual & Design
 
 #### [`ascii-pixel-art`](./skills/ascii-pixel-art)
@@ -200,7 +198,6 @@ Skills are located in the `skills/` directory.
 - `Add enter/exit animations to a sidebar nav using Framer Motion without layout jank`
 - `Audit a form for WCAG 2.1 AA compliance and generate a fix list`
 
-
 ### Marketing & Communications
 
 #### [`app-marketing-copy`](./skills/app-marketing-copy)
@@ -251,7 +248,6 @@ Skills are located in the `skills/` directory.
 - `Audit a marketing site for missing meta descriptions, duplicate title tags, and broken canonical URLs`
 - `Add structured data (JSON-LD) for a recipe blog to enable rich results in Google Search`
 - `Generate a sitemap.xml and robots.txt for a Next.js static site`
-
 
 ### AI & LLM
 
@@ -304,7 +300,6 @@ Skills are located in the `skills/` directory.
 - `Create a code review prompt tuned for a TypeScript/React codebase with team-specific conventions`
 - `Produce XML-formatted prompts optimized for Claude with chain-of-thought and output schema`
 
-
 ### Security
 
 #### [`blockchain-auditor`](./skills/blockchain-auditor)
@@ -327,7 +322,6 @@ Skills are located in the `skills/` directory.
 - `Generate a STRIDE threat model for a multi-tenant SaaS API with enumerated abuse paths and mitigations`
 - `Document trust boundaries for a mobile app that handles PII and payment data`
 - `Write a threat model document for an OAuth 2.0 integration covering token theft and PKCE bypass scenarios`
-
 
 ### Infrastructure
 
@@ -359,7 +353,6 @@ Skills are located in the `skills/` directory.
 - `Get current service alerts for the L line before commuting`
 - `Find the nearest station to a given address and show live departures`
 
-
 ### Graphics & 3D
 
 #### [`gsplat-optimizer`](./skills/gsplat-optimizer)
@@ -368,7 +361,6 @@ Skills are located in the `skills/` directory.
 - `Analyze a 2M-splat `.ply` file and generate a pruning plan targeting 60fps on iPhone 15`
 - `Design a LOD scheme for a visionOS experience that switches between detail levels based on distance`
 - `Benchmark a Gaussian splat scene with Instruments and identify Metal shader bottlenecks`
-
 
 ### Media & Video
 
@@ -379,7 +371,6 @@ Skills are located in the `skills/` directory.
 - `Hardsub an SRT subtitle file onto an MP4 while preserving HDR metadata`
 - `Batch-convert a folder of MKV files to MP4 with AAC audio for web compatibility`
 
-
 ### Web3 & Blockchain
 
 #### [`opensea-api`](./skills/opensea-api)
@@ -389,7 +380,6 @@ Skills are located in the `skills/` directory.
 - `Track real-time sales events for a collection to alert on significant trades`
 - `Pull collection stats (volume, floor, holders) for a competitive market analysis report`
 
-
 ### Game Development
 
 #### [`playdate-dev`](./skills/playdate-dev)
@@ -398,7 +388,6 @@ Skills are located in the `skills/` directory.
 - `Build a Playdate puzzle game where the crank controls a rotating mechanism to solve each level`
 - `Implement a sprite-based platformer with parallax scrolling on the 1-bit display`
 - `Set up a pdxinfo manifest and Simulator build pipeline for submitting to the Catalog`
-
 
 ### Research & Analysis
 
@@ -423,7 +412,6 @@ Skills are located in the `skills/` directory.
 - `Identify p-hacking and HARKing in a published machine learning paper`
 - `Critique the experimental design of an A/B test report for confounds and underpowering`
 
-
 ### Self-Improvement & Optimization
 
 #### [`continuous-learning`](./skills/continuous-learning)
@@ -432,7 +420,6 @@ Skills are located in the `skills/` directory.
 - `Detect recurring database migration patterns across sessions and auto-generate a migration skill`
 - `Surface a gap in agent capabilities after three failed attempts at the same task type`
 - `Propose and scaffold a new skill file when a workflow has been manually repeated 3+ times`
-
 
 ### Planning & Process
 
@@ -472,7 +459,6 @@ Skills are located in the `skills/` directory.
 - `Install the right skill for an unfamiliar domain on-demand using a "matrix kung-fu" style request`
 - `Discover and compare three candidate skills for a task before selecting the best fit`
 - `Create a custom skill when no existing registry match covers a recurring workflow`
-
 
 ## Skill Origins & Attribution
 
@@ -515,7 +501,6 @@ cp -r skills/<skill-name> ~/.claude/skills/
 ```bash
 cp -r skills/<skill-name> ~/.codex/skills/
 ```
-
 
 ## Contributing
 
