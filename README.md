@@ -525,3 +525,7 @@ Your skill documentation here...
 ## License
 
 MIT License - see [LICENSE](./LICENSE) for details.
+
+## Agent Workflow
+
+See [AGENTS.md](./AGENTS.md) for repo-specific development and agent instructions.

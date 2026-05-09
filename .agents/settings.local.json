@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git -C /Users/ckorhonen/Repos/claude-skills log --all --oneline --grep=\"command\")"
+    ]
+  }
+}
