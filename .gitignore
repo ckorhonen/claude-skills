@@ -53,3 +53,7 @@ docs/plans/
 # Environment
 .env
 .env.local
+
+# Eval outputs
+results/
+*.log
