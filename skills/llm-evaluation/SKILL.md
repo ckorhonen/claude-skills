@@ -555,17 +555,6 @@ class BenchmarkRunner:
         }
 ```
 
-## Resources
-
-- **references/metrics.md**: Comprehensive metric guide
-- **references/human-evaluation.md**: Annotation best practices
-- **references/benchmarking.md**: Standard benchmarks
-- **references/a-b-testing.md**: Statistical testing guide
-- **references/regression-testing.md**: CI/CD integration
-- **assets/evaluation-framework.py**: Complete evaluation harness
-- **assets/benchmark-dataset.jsonl**: Example datasets
-- **scripts/evaluate-model.py**: Automated evaluation runner
-
 ## CI/CD Integration: Evals as Code
 
 Run evaluations automatically in your CI/CD pipeline:

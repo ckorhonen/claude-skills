@@ -64,8 +64,6 @@ jobs:
           files: ./coverage/lcov.info
 ```
 
-**Reference:** See `assets/test-workflow.yml`
-
 ### Pattern 2: Build and Push Docker Image
 
 ```yaml
@@ -118,8 +116,6 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 ```
-
-**Reference:** See `assets/deploy-workflow.yml`
 
 ### Pattern 3: Deploy to Kubernetes
 
@@ -192,8 +188,6 @@ jobs:
       - name: Run tests
         run: pytest
 ```
-
-**Reference:** See `assets/matrix-build.yml`
 
 ## Workflow Best Practices
 
@@ -803,13 +797,6 @@ jobs:
 4. **Test matrix locally:** Simulate matrix combinations in local test script
 5. **Inspect cache:** View cache entries in GitHub UI under "Actions" → "Caches"
 6. **Review secrets:** Confirm all `${{ secrets.NAME }}` are defined in repository settings
-
-## Reference Files
-
-- `assets/test-workflow.yml` - Testing workflow template
-- `assets/deploy-workflow.yml` - Deployment workflow template
-- `assets/matrix-build.yml` - Matrix build template
-- `references/common-workflows.md` - Common workflow patterns
 
 ## Related Skills
 
