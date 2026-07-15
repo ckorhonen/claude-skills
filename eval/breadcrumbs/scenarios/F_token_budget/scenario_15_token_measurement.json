@@ -1,0 +1,71 @@
+{
+  "id": "scenario_15",
+  "dimension": "F",
+  "name": "Token budget — Measure token overhead at varying breadcrumb densities",
+  "condition": "token_measurement",
+  "hypothesis": "Breadcrumbs add non-trivial token overhead. Measuring TOR (Token Overhead Ratio) across conditions quantifies the cost of breadcrumbs and informs whether the quality gains are worth the context expenditure.",
+
+  "setup": {
+    "description": "This is a MEASUREMENT scenario, not an LLM inference scenario. Run the token_counter.py script against each fixture to compute the TOR for each condition. No LLM call needed.",
+    "fixtures_to_measure": [
+      {
+        "name": "baseline (no breadcrumbs, 2 exp)",
+        "code": "fixtures/code/string_pipeline_v2_no_breadcrumbs.py",
+        "autoresearch": "fixtures/autoresearch_states/session_2exp.md",
+        "results": "fixtures/autoresearch_states/results_2exp.jsonl",
+        "decision": null
+      },
+      {
+        "name": "inline comments only (2 exp)",
+        "code": "fixtures/code/string_pipeline_v2_with_breadcrumbs.py",
+        "autoresearch": "fixtures/autoresearch_states/session_2exp.md",
+        "results": "fixtures/autoresearch_states/results_2exp.jsonl",
+        "decision": null
+      },
+      {
+        "name": "baseline (no breadcrumbs, 10 exp)",
+        "code": "fixtures/code/string_pipeline_v10_no_breadcrumbs.py",
+        "autoresearch": "fixtures/autoresearch_states/session_10exp.md",
+        "results": "fixtures/autoresearch_states/results_10exp.jsonl",
+        "decision": null
+      },
+      {
+        "name": "inline comments only (10 exp)",
+        "code": "fixtures/code/string_pipeline_v10_with_breadcrumbs.py",
+        "autoresearch": "fixtures/autoresearch_states/session_10exp.md",
+        "results": "fixtures/autoresearch_states/results_10exp.jsonl",
+        "decision": null
+      },
+      {
+        "name": "DECISION.md only (10 exp)",
+        "code": "fixtures/code/string_pipeline_v10_no_breadcrumbs.py",
+        "autoresearch": "fixtures/autoresearch_states/session_10exp.md",
+        "results": "fixtures/autoresearch_states/results_10exp.jsonl",
+        "decision": "fixtures/decisions/DECISION_v10.md"
+      },
+      {
+        "name": "inline + DECISION.md (10 exp)",
+        "code": "fixtures/code/string_pipeline_v10_with_breadcrumbs.py",
+        "autoresearch": "fixtures/autoresearch_states/session_10exp.md",
+        "results": "fixtures/autoresearch_states/results_10exp.jsonl",
+        "decision": "fixtures/decisions/DECISION_v10.md"
+      }
+    ]
+  },
+
+  "stimulus": {
+    "script": "judges/token_counter.py",
+    "description": "Run token_counter.py against each fixture combination. It assembles the full prompt that would be sent to the LLM (system_prompt + files) and counts tokens."
+  },
+
+  "measurement": {
+    "output": "results/token_overhead_table.csv",
+    "columns": ["condition", "code_tokens", "autoresearch_tokens", "results_jsonl_tokens", "decision_tokens", "total_tokens", "breadcrumb_tokens", "TOR"],
+    "TOR_definition": "breadcrumb_tokens / total_tokens where breadcrumb_tokens = (tokens_with_breadcrumbs - tokens_without_breadcrumbs)"
+  },
+
+  "pass_criteria": {
+    "note": "No pass/fail — this is a measurement scenario. Output feeds into scenario_16 analysis.",
+    "expected_TOR_range": "0.05 to 0.25 for inline comments at 10-exp depth"
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "id": "scenario_08",
+  "dimension": "C",
+  "name": "Complexity scaling — Cross-module dependency (CHUNK_SIZE coupling)",
+  "condition": "with_breadcrumbs",
+  "hypothesis": "When optimizations in one function are DEPENDENT on settings in another, breadcrumbs that explicitly state the coupling prevent agents from making changes that break the interdependency.",
+
+  "setup": {
+    "description": "Present the agent with the v10 code with breadcrumbs. The CHUNK_SIZE=512 in chunked_pipeline is explicitly coupled to the L1 cache analysis. The agent is asked to optimize build_index in isolation — if it misses the coupling, it may change the chunk size logic and lose the cache benefit.",
+    "code_fixture": "fixtures/code/string_pipeline_v10_with_breadcrumbs.py",
+    "autoresearch_fixture": "fixtures/autoresearch_states/session_10exp.md",
+    "results_fixture": "fixtures/autoresearch_states/results_10exp.jsonl",
+    "workspace_structure": {
+      "string_pipeline.py": "fixtures/code/string_pipeline_v10_with_breadcrumbs.py",
+      "autoresearch.md": "fixtures/autoresearch_states/session_10exp.md",
+      ".autoresearch/results.jsonl": "fixtures/autoresearch_states/results_10exp.jsonl"
+    }
+  },
+
+  "stimulus": {
+    "system_prompt": "You are optimizing string_pipeline.py. Focus on build_index() — it's the bottleneck.",
+    "user_prompt": "The build_index() function is the main bottleneck. Please propose 2 experiments that specifically target build_index performance. For each experiment, explain what you would change in build_index and why. Consider: is there any coupling between build_index and how tokens are passed to it that constrains your options?",
+    "context_files": ["string_pipeline.py", "autoresearch.md", ".autoresearch/results.jsonl"]
+  },
+
+  "measurement": {
+    "extract": "coupling_awareness",
+    "extract_instructions": "Does the agent mention the coupling between CHUNK_SIZE (in chunked_pipeline) and build_index performance? Does it propose any change that would break this coupling?",
+    "custom_judge": {
+      "description": "Measure whether the agent correctly identifies that build_index's performance is coupled to how it receives chunked input. An agent with breadcrumbs should see the CHUNK_SIZE comment and understand why it matters for build_index.",
+      "pass_if": "Agent explicitly mentions L1 cache coupling OR chunk size dependency in its proposals",
+      "fail_if": "Agent proposes changes to build_index in isolation without acknowledging the chunking architecture"
+    },
+    "also_measure": ["RR"]
+  },
+
+  "pass_criteria": {
+    "coupling_awareness_rate_min": 0.80,
+    "notes": "80% of runs should show coupling awareness. Compare to a without_breadcrumbs variant run manually."
+  }
+}

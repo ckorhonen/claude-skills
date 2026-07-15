@@ -1,0 +1,60 @@
+{
+  "id": "scenario_03",
+  "dimension": "A",
+  "name": "Resume accuracy — MISLEADING breadcrumbs (adversarial condition)",
+  "condition": "misleading_breadcrumbs",
+  "paired_with": "scenario_01",
+  "hypothesis": "Agents given WRONG inline comments will perform worse than agents with no comments at all, because they will follow misleading rationale and propose changes the comments incorrectly suggest are safe.",
+
+  "setup": {
+    "description": "Same workspace as scenario_01 but string_pipeline.py has WRONG explanatory comments that misattribute reasons, suggest safe-to-remove patterns, and recommend re-testing things already discarded. autoresearch.md and results.jsonl are unchanged.",
+    "code_fixture": "fixtures/code/string_pipeline_v10_misleading_breadcrumbs.py",
+    "autoresearch_fixture": "fixtures/autoresearch_states/session_10exp.md",
+    "results_fixture": "fixtures/autoresearch_states/results_10exp.jsonl",
+    "decision_fixture": null,
+    "workspace_structure": {
+      "string_pipeline.py": "fixtures/code/string_pipeline_v10_misleading_breadcrumbs.py",
+      "autoresearch.md": "fixtures/autoresearch_states/session_10exp.md",
+      ".autoresearch/results.jsonl": "fixtures/autoresearch_states/results_10exp.jsonl"
+    }
+  },
+
+  "stimulus": {
+    "system_prompt": "You are resuming an autoresearch session to optimize string_pipeline.py for minimum latency. You have access to the autoresearch.md session notes, the results.jsonl experiment ledger, and the current code. Your task is to propose the next 3 experiments.",
+    "user_prompt": "Resume the autoresearch session. Read autoresearch.md and .autoresearch/results.jsonl to understand what has been tried. Then read string_pipeline.py carefully, including all comments. Propose the next 3 experiments as experiment cards (each with: id, hypothesis, planned change, why it should help, predicted improvement, rollback plan). Do NOT propose anything that was already tried. Do NOT propose changes that would undo an existing optimization.",
+    "context_files": ["string_pipeline.py", "autoresearch.md", ".autoresearch/results.jsonl"]
+  },
+
+  "measurement": {
+    "extract": "proposed_experiment_cards",
+    "extract_instructions": "Parse the agent response for numbered experiment proposals. Extract each hypothesis statement.",
+    "judges": [
+      {
+        "judge": "judges/novelty_judge.py",
+        "against": "results_10exp.jsonl",
+        "metric": "HNS"
+      },
+      {
+        "judge": "judges/regression_judge.py",
+        "against": "results_10exp.jsonl",
+        "metric": "RR"
+      }
+    ],
+    "special_measurement": {
+      "misleading_follow_rate": "Fraction of proposals that follow a misleading comment's recommendation (e.g., proposes to remove chunking because comment says 'no performance benefit', proposes Counter because comment says 'Counter was not tested'). Measured by human rater or LLM judge against the list of misleading claims in the fixture."
+    },
+    "also_measure": ["SBT", "response_length_tokens"]
+  },
+
+  "pass_criteria": {
+    "misleading_follow_rate_max": 0.20,
+    "notes": "Agent should use the results.jsonl ledger to override misleading comments. If it follows misleading comments instead of the ledger, this indicates code comments can actively harm performance when wrong — and agents should be trained/prompted to prefer structured ledger data over inline comments when they conflict."
+  },
+
+  "expected_signals": [
+    "Agent notices conflict between comments and results.jsonl",
+    "Agent explicitly calls out that comments say 'Counter not tested' but ledger shows it was (exp-004)",
+    "Agent may or may not follow misleading comments — the rate is the key measurement",
+    "If agent follows misleading comments: strong evidence that bad breadcrumbs are WORSE than no breadcrumbs"
+  ]
+}

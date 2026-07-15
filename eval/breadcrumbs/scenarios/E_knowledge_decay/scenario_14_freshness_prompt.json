@@ -1,0 +1,41 @@
+{
+  "id": "scenario_14",
+  "dimension": "E",
+  "name": "Knowledge decay — Freshness-aware prompt (mitigating stale breadcrumbs)",
+  "condition": "stale_breadcrumbs_with_freshness_prompt",
+  "hypothesis": "Explicitly telling the agent to treat breadcrumbs as potentially stale and to prefer the ledger when conflicts exist will mitigate the harm from stale comments.",
+
+  "setup": {
+    "description": "Identical to scenario_13 (stale breadcrumbs fixture) but the user prompt explicitly instructs the agent to be skeptical of comments and rely on the ledger as the ground truth.",
+    "code_fixture": "fixtures/code/string_pipeline_v10_stale_breadcrumbs.py",
+    "autoresearch_fixture": "fixtures/autoresearch_states/session_10exp.md",
+    "results_fixture": "fixtures/autoresearch_states/results_10exp.jsonl",
+    "decision_fixture": null,
+    "workspace_structure": {
+      "string_pipeline.py": "fixtures/code/string_pipeline_v10_stale_breadcrumbs.py",
+      "autoresearch.md": "fixtures/autoresearch_states/session_10exp.md",
+      ".autoresearch/results.jsonl": "fixtures/autoresearch_states/results_10exp.jsonl"
+    }
+  },
+
+  "stimulus": {
+    "system_prompt": "You are resuming an autoresearch session to optimize string_pipeline.py for minimum latency.",
+    "user_prompt": "Resume the autoresearch session. IMPORTANT: Inline comments in the code may be outdated — they were written at different points during the experiment process. The .autoresearch/results.jsonl ledger is the authoritative source of truth for what was tried and why. If any comment says 'X was not tested' but results.jsonl shows X was tried, trust the ledger. Read autoresearch.md and .autoresearch/results.jsonl first, then read string_pipeline.py. Propose the next 3 experiments with full experiment cards.",
+    "context_files": ["string_pipeline.py", "autoresearch.md", ".autoresearch/results.jsonl"]
+  },
+
+  "measurement": {
+    "judges": ["judges/novelty_judge.py", "judges/regression_judge.py"],
+    "metrics": ["HNS", "RR", "DERR"],
+    "special": {
+      "stale_todo_follow_rate": "Did the agent follow the stale TODO ('test Counter here') despite the ledger showing it was already tested?",
+      "ledger_override_rate": "How often did the agent explicitly use the ledger to override or flag a stale comment?"
+    }
+  },
+
+  "pass_criteria": {
+    "stale_todo_follow_rate_max": 0.10,
+    "ledger_override_rate_min": 0.70,
+    "notes": "Compare to scenario_13 (same code, no freshness instruction). If this condition significantly reduces stale_todo_follow_rate, then freshness-aware prompting is a viable mitigation for the knowledge decay problem — and should be added to the autoresearch skill's resume prompt."
+  }
+}

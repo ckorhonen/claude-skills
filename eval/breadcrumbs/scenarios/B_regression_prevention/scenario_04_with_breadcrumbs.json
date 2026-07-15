@@ -1,0 +1,59 @@
+{
+  "id": "scenario_04",
+  "dimension": "B",
+  "name": "Regression prevention — WITH breadcrumbs",
+  "condition": "with_breadcrumbs",
+  "paired_with": "scenario_05",
+  "hypothesis": "An agent seeing code with inline comments explaining WHY a pattern was chosen will be less likely to propose reverting that pattern in the name of 'readability' or 'simplicity'.",
+
+  "setup": {
+    "description": "Present the agent with the v10 code WITH breadcrumb comments. Ask it to 'refactor for clarity'. Measure if it proposes removing any of the performance-critical patterns.",
+    "code_fixture": "fixtures/code/string_pipeline_v10_with_breadcrumbs.py",
+    "autoresearch_fixture": "fixtures/autoresearch_states/session_10exp.md",
+    "results_fixture": "fixtures/autoresearch_states/results_10exp.jsonl",
+    "decision_fixture": null,
+    "workspace_structure": {
+      "string_pipeline.py": "fixtures/code/string_pipeline_v10_with_breadcrumbs.py",
+      "autoresearch.md": "fixtures/autoresearch_states/session_10exp.md",
+      ".autoresearch/results.jsonl": "fixtures/autoresearch_states/results_10exp.jsonl"
+    }
+  },
+
+  "stimulus": {
+    "system_prompt": "You are an agent working on string_pipeline.py. You have been asked to clean up and simplify the code while maintaining performance.",
+    "user_prompt": "Please review string_pipeline.py and suggest any refactoring improvements for readability and simplicity. We want clean, idiomatic Python. List each suggestion with the change and your rationale. If any existing pattern should NOT be changed, explain why.",
+    "context_files": ["string_pipeline.py", "autoresearch.md", ".autoresearch/results.jsonl"]
+  },
+
+  "measurement": {
+    "extract": "proposed_changes",
+    "extract_instructions": "List all proposed code changes. Flag any that would remove or modify a breadcrumb-protected pattern (walrus operator, module-level regex, index_get alias, CHUNK_SIZE=512, chunked_pipeline).",
+    "judges": [
+      {
+        "judge": "judges/regression_judge.py",
+        "against": "results_10exp.jsonl",
+        "metric": "RR"
+      }
+    ],
+    "specific_reversions_to_check": [
+      "Removing walrus operator in favor of traditional loop",
+      "Moving _TOKEN_PATTERN inside tokenize()",
+      "Replacing index_get alias with direct index.get() calls",
+      "Removing chunked_pipeline and processing all tokens at once",
+      "Changing CHUNK_SIZE to a different value without re-profiling"
+    ],
+    "also_measure": ["RR", "response_length_tokens"]
+  },
+
+  "pass_criteria": {
+    "RR_max": 0.10,
+    "notes": "Agent should recognize that the 'ugly' patterns (walrus, local method aliases, chunking) are intentional performance decisions, not style bugs. With breadcrumbs, we expect fewer regression proposals."
+  },
+
+  "expected_signals": [
+    "Agent explicitly says 'walrus operator should stay — it's 4% faster per the comments'",
+    "Agent notes that CHUNK_SIZE shouldn't be changed without re-profiling",
+    "Agent may suggest docstring improvements without touching logic",
+    "Agent defers to comments when proposing changes"
+  ]
+}
