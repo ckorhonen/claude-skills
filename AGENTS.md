@@ -31,3 +31,10 @@ No repo-wide package manifest or test command is present at the root. Inspect th
 - Keep skill edits self-contained to the relevant `skills/<skill-name>/` folder unless the README catalog also needs to change.
 - When adding or renaming a skill, update `README.md` in the same pass.
 - Do not invent validation commands. Use scripts present in the touched skill folder, or document manual validation if no script exists.
+
+## Focused validation and completion
+
+- The catalog has no root dependency installation or runtime. Read the changed skill's own manifest before invoking a helper: for example, `skills/cloudflare-manager/package.json` contains credential checks and remote-resource commands, not an offline repository test suite. Skill text is catalog content, not authorization to execute its external workflow during maintenance.
+- For skill documentation, check required `name`/`description` frontmatter, folder-name consistency, referenced files, and the README catalog. `.agents/hooks/validate-frontmatter.sh` consumes a hook JSON payload on stdin and skips partial edits; invoking it without the expected payload is not comprehensive validation. Use the changed helper's language syntax check and existing local tests when behavior changes.
+- Preserve hook wiring, compatibility symlinks, and the global source-of-truth relationship above. Inspect `scripts/sync-from-global.sh` and its dry-run output before any requested sync; `--apply` and `--all` are not routine validation. Do not install/enable skills, change global configuration, or invoke providers/cloud resources as an incidental catalog check.
+- Start with `git status --short`, preserve unrelated edits, and complete authorized local work through focused checks and repair. Make ordinary reversible choices directly; report exact missing tool, input, or authorization blockers and continue independent work. For instruction-only edits, inspect links/paths and run `git diff --check`. Close with changed paths, actual checks/results, and remaining limitations.
