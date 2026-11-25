@@ -112,6 +112,22 @@ class ValidateCatalogTests(unittest.TestCase):
             self.assertEqual(len(errors), 1)
             self.assertIn("missing.md", errors[0])
 
+    def test_handles_angle_brackets_reference_links_and_tilde_fences(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = _create_minimal_repo(Path(td))
+            (root / "skills" / "demo-skill" / "my guide.md").write_text("# Guide\n", encoding="utf-8")
+            (root / "skills" / "demo-skill" / "SKILL.md").write_text(
+                "---\nname: demo-skill\ndescription: Demo skill\n---\n\n"
+                "[spaced](<my guide.md>)\n"
+                "[ref][missing-ref]\n\n"
+                "[missing-ref]: ./missing-ref.md\n\n"
+                "~~~md\n[ignored](./not-real.md)\n[ignored-ref]: ./also-ignored.md\n~~~\n",
+                encoding="utf-8",
+            )
+            errors = vc.validate_skill_links(root)
+            self.assertEqual(len(errors), 1)
+            self.assertIn("./missing-ref.md", errors[0])
+
     def test_detects_retired_model_and_doc_drift(self) -> None:
         with tempfile.TemporaryDirectory() as td:
             root = _create_minimal_repo(Path(td))

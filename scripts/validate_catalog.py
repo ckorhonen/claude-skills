@@ -70,8 +70,50 @@ HELP_SMOKE_SKIP = {
 }
 
 MARKDOWN_LINK_RE = re.compile(r"\[[^\]]*\]\(([^)]+)\)")
-FENCED_BLOCK_RE = re.compile(r"```[\s\S]*?```")
+MARKDOWN_REF_LINK_RE = re.compile(r"^[ ]{0,3}\[[^\]]+\]:[ \t]*(.+)$", re.MULTILINE)
 README_SKILL_RE = re.compile(r"\./skills/([a-zA-Z0-9_-]+)")
+
+
+def _strip_fenced_code_blocks(text: str) -> str:
+    """Remove backtick- and tilde-fenced code blocks from Markdown."""
+    out: list[str] = []
+    fence_char: str | None = None
+    fence_len = 0
+    for line in text.splitlines(keepends=True):
+        stripped = line.lstrip(" ")
+        indent = len(line) - len(stripped)
+        if fence_char is None:
+            if indent <= 3 and (stripped.startswith("```") or stripped.startswith("~~~")):
+                ch = stripped[0]
+                run = 0
+                while run < len(stripped) and stripped[run] == ch:
+                    run += 1
+                if ch == "`" and "`" in stripped[run:]:
+                    out.append(line)
+                else:
+                    fence_char = ch
+                    fence_len = run
+                continue
+            out.append(line)
+        else:
+            if indent <= 3 and stripped.startswith(fence_char * fence_len):
+                rest = stripped.lstrip(fence_char).strip()
+                if not rest:
+                    fence_char = None
+                    fence_len = 0
+    return "".join(out)
+
+
+def _extract_link_target(raw_target: str) -> str:
+    """Extract the destination from an inline or reference Markdown link."""
+    raw = raw_target.strip()
+    if not raw:
+        return ""
+    if raw.startswith("<"):
+        end = raw.find(">")
+        if end != -1:
+            return raw[1:end].strip()
+    return raw.split()[0]
 
 
 def _parse_fallback_scalar(raw_val: str) -> tuple[str | None, str | None]:
@@ -417,12 +459,13 @@ def validate_skill_links(root: Path) -> list[str]:
 
     for skill_md in sorted(skills_dir.glob("*/SKILL.md")):
         text = skill_md.read_text(encoding="utf-8")
-        stripped = FENCED_BLOCK_RE.sub("", text)
-        for match in MARKDOWN_LINK_RE.finditer(stripped):
-            raw_target = match.group(1).strip()
-            if not raw_target:
+        stripped = _strip_fenced_code_blocks(text)
+        raw_targets = [m.group(1) for m in MARKDOWN_LINK_RE.finditer(stripped)]
+        raw_targets.extend(m.group(1) for m in MARKDOWN_REF_LINK_RE.finditer(stripped))
+        for raw_target in raw_targets:
+            target = _extract_link_target(raw_target)
+            if not target:
                 continue
-            target = raw_target.split()[0]
             if target.startswith(("http://", "https://", "mailto:", "#", "tel:")):
                 continue
             target_path = target.split("#", 1)[0].split("?", 1)[0]
