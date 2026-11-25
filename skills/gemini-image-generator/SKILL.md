@@ -24,7 +24,7 @@ Generate images using Google's Gemini API with support for text-to-image generat
 ## Prerequisites
 
 - Python 3.9+
-- `google-genai` package
+- `google-genai` package (1.49.0 or newer for 2K and 4K output)
 - `GEMINI_API_KEY` environment variable
 
 ## Installation

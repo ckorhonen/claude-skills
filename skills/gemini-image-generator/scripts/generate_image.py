@@ -183,12 +183,16 @@ def generate_image(
     contents.append(prompt)
 
     # Configure generation for image output
+    image_options = {"aspect_ratio": aspect_ratio}
+    if model in HIGH_RES_MODELS and size != DEFAULT_SIZE:
+        if "image_size" not in types.ImageConfig.model_fields:
+            print("Error: 2K and 4K require google-genai>=1.49.0. Upgrade with: pip install --upgrade google-genai", file=sys.stderr)
+            sys.exit(EXIT_INVALID_ARGS)
+        image_options["image_size"] = size
+
     config = types.GenerateContentConfig(
         response_modalities=["IMAGE", "TEXT"],
-        image_config=types.ImageConfig(
-            aspect_ratio=aspect_ratio,
-            image_size=size if model in HIGH_RES_MODELS else None,
-        ),
+        image_config=types.ImageConfig(**image_options),
     )
 
     if verbose:
