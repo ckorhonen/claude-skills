@@ -6,7 +6,12 @@ This repository is a collection of reusable AI-agent skills under `skills/`. The
 
 ## Commands
 
-No repo-wide package manifest or test command is present at the root. Inspect the specific `skills/<skill-name>/` directory before changing a skill; some skills may include their own helper scripts or package manifests.
+Run the repo-wide offline catalog validation suite with:
+
+- `python3 scripts/validate_catalog.py` — validates symlinks, skill/agent/command frontmatter, README sync, install/hook manifests, relative markdown links, helper syntax, model-provider defaults, and offline helper tests.
+- `python3 -m unittest discover -s scripts -p "test_*.py" -v` — runs unit tests for the catalog validator.
+
+No root package manifest is present. Inspect the specific `skills/<skill-name>/` directory before changing a skill; some skills include their own helper scripts or package manifests.
 
 ## Repository Map
 
