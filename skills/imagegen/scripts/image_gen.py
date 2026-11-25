@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Generate or edit images with the OpenAI Image API.
 
-Defaults to gpt-image-1.5 and a structured prompt augmentation workflow.
+Defaults to gpt-image-2.6-sunburst and a structured prompt augmentation workflow.
 """
 
 from __future__ import annotations
@@ -19,7 +19,8 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 from io import BytesIO
 
-DEFAULT_MODEL = "gpt-image-1.5"
+DEFAULT_MODEL = "gpt-image-2.6-sunburst"
+NO_INPUT_FIDELITY_MODELS = {DEFAULT_MODEL, "gpt-image-2.6-flare"}
 DEFAULT_SIZE = "1024x1024"
 DEFAULT_QUALITY = "auto"
 DEFAULT_OUTPUT_FORMAT = "png"
@@ -787,7 +788,7 @@ class _FileBundle:
 
 
 def _add_shared_args(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--model", default=DEFAULT_MODEL)
+    parser.add_argument("--model", default=DEFAULT_MODEL, help="Image model (default: %(default)s)")
     parser.add_argument("--prompt")
     parser.add_argument("--prompt-file")
     parser.add_argument("--n", type=int, default=1)
@@ -846,10 +847,12 @@ def main() -> int:
     _add_shared_args(edit_parser)
     edit_parser.add_argument("--image", action="append", required=True)
     edit_parser.add_argument("--mask")
-    edit_parser.add_argument("--input-fidelity")
+    edit_parser.add_argument("--input-fidelity", help="Input fidelity for supported models; omit for GPT-Image-2.6")
     edit_parser.set_defaults(func=_edit)
 
     args = parser.parse_args()
+    if args.command == "edit" and args.input_fidelity is not None and args.model in NO_INPUT_FIDELITY_MODELS:
+        edit_parser.error(f"{args.model}: omit --input-fidelity; this option is not available for GPT-Image-2.6.")
     if args.n < 1 or args.n > 10:
         _die("--n must be between 1 and 10")
     if getattr(args, "concurrency", 1) < 1 or getattr(args, "concurrency", 1) > 25:
