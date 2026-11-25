@@ -71,7 +71,7 @@ HELP_SMOKE_SKIP = {
 
 MARKDOWN_LINK_RE = re.compile(r"\[[^\]]*\]\(([^)]+)\)")
 MARKDOWN_REF_LINK_RE = re.compile(r"^[ ]{0,3}\[[^\]]+\]:[ \t]*(.+)$", re.MULTILINE)
-README_SKILL_RE = re.compile(r"\./skills/([a-zA-Z0-9_-]+)")
+HTML_COMMENT_RE = re.compile(r"<!--[\s\S]*?-->")
 
 
 def _strip_fenced_code_blocks(text: str) -> str:
@@ -334,14 +334,37 @@ def validate_readme_sync(root: Path) -> list[str]:
         return ["missing skills/ directory"]
 
     dir_names = {d.name for d in skills_dir.iterdir() if d.is_dir() and not d.name.startswith(".")}
-    readme_skills = set(README_SKILL_RE.findall(readme_path.read_text(encoding="utf-8")))
+    readme_text = HTML_COMMENT_RE.sub(
+        "", _strip_fenced_code_blocks(readme_path.read_text(encoding="utf-8"))
+    )
+    raw_targets = [m.group(1) for m in MARKDOWN_LINK_RE.finditer(readme_text)]
+    raw_targets.extend(m.group(1) for m in MARKDOWN_REF_LINK_RE.finditer(readme_text))
+
+    readme_skills: set[str] = set()
+    broken_links: set[str] = set()
+    for raw_target in raw_targets:
+        target = _extract_link_target(raw_target)
+        if not target:
+            continue
+        clean = target.split("#", 1)[0].split("?", 1)[0]
+        if clean.startswith("./"):
+            clean = clean[2:]
+        if not clean.startswith("skills/"):
+            continue
+        parts = Path(clean).parts
+        if len(parts) < 2:
+            continue
+        resolved = (root / clean).resolve()
+        if not resolved.exists():
+            broken_links.add(target)
+            continue
+        readme_skills.add(parts[1])
 
     missing_from_readme = sorted(dir_names - readme_skills)
-    missing_from_disk = sorted(readme_skills - dir_names)
     for name in missing_from_readme:
         errors.append(f"README.md missing catalog entry for skills/{name}")
-    for name in missing_from_disk:
-        errors.append(f"README.md links to nonexistent ./skills/{name}")
+    for target in sorted(broken_links):
+        errors.append(f"README.md links to nonexistent {target}")
     return errors
 
 
