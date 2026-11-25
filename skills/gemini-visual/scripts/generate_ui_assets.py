@@ -22,8 +22,7 @@ EXIT_API_ERROR = 4
 EXIT_SAVE_ERROR = 5
 
 # Configuration
-DEFAULT_MODEL = "gemini-3-pro-image-preview"
-FALLBACK_MODEL = "gemini-2.5-flash-image"
+DEFAULT_MODEL = "gemini-3-pro-image"
 
 VALID_ASSET_TYPES = ["icon", "background", "pattern", "illustration", "badge"]
 VALID_STYLES = [
