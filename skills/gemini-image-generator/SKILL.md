@@ -81,7 +81,7 @@ Required:
 Optional:
   -o, --output PATH         Output file path (default: auto-generated)
   -m, --model MODEL         Model to use (default: gemini-3-pro-image)
-  -a, --aspect-ratio RATIO  Aspect ratio (default: 1:1)
+  -a, --aspect-ratio RATIO  Aspect ratio (default: 1:1 for generation; match input image for edits)
   -s, --size SIZE           Image size: 1K, 2K, 4K (default: 1K; 2K/4K require Nano Banana 2.1 or Pro)
   -i, --input-image PATH    Input image for editing mode
   -r, --reference-images    Reference image(s), can be repeated (max 14)

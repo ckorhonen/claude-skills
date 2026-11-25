@@ -95,7 +95,7 @@ def validate_args(args: argparse.Namespace) -> None:
         sys.exit(EXIT_INVALID_ARGS)
 
     # Check aspect ratio
-    if args.aspect_ratio not in VALID_ASPECT_RATIOS:
+    if args.aspect_ratio is not None and args.aspect_ratio not in VALID_ASPECT_RATIOS:
         print(f"Error: Invalid aspect ratio '{args.aspect_ratio}'", file=sys.stderr)
         print(f"Valid ratios: {', '.join(VALID_ASPECT_RATIOS)}", file=sys.stderr)
         sys.exit(EXIT_INVALID_ARGS)
@@ -131,7 +131,7 @@ def validate_args(args: argparse.Namespace) -> None:
 def generate_image(
     prompt: str,
     model: str = DEFAULT_MODEL,
-    aspect_ratio: str = DEFAULT_ASPECT_RATIO,
+    aspect_ratio: Optional[str] = None,
     size: str = DEFAULT_SIZE,
     input_image: Optional[str] = None,
     reference_images: Optional[list[str]] = None,
@@ -147,11 +147,13 @@ def generate_image(
         sys.exit(EXIT_INVALID_ARGS)
 
     api_key = get_api_key()
+    if aspect_ratio is None and not input_image:
+        aspect_ratio = DEFAULT_ASPECT_RATIO
 
     if verbose:
         print(f"[*] Configuring Gemini client...")
         print(f"[*] Model: {model}")
-        print(f"[*] Aspect ratio: {aspect_ratio}")
+        print(f"[*] Aspect ratio: {aspect_ratio or 'match input image'}")
         print(f"[*] Size: {size}")
 
     # Initialize client
@@ -183,7 +185,9 @@ def generate_image(
     contents.append(prompt)
 
     # Configure generation for image output
-    image_options = {"aspect_ratio": aspect_ratio}
+    image_options = {}
+    if aspect_ratio is not None:
+        image_options["aspect_ratio"] = aspect_ratio
     if model in HIGH_RES_MODELS and size != DEFAULT_SIZE:
         if "image_size" not in types.ImageConfig.model_fields:
             print("Error: 2K and 4K require google-genai>=1.49.0. Upgrade with: pip install --upgrade google-genai", file=sys.stderr)
@@ -192,7 +196,7 @@ def generate_image(
 
     config = types.GenerateContentConfig(
         response_modalities=["IMAGE", "TEXT"],
-        image_config=types.ImageConfig(**image_options),
+        image_config=types.ImageConfig(**image_options) if image_options else None,
     )
 
     if verbose:
@@ -300,9 +304,8 @@ Environment:
     )
     parser.add_argument(
         "-a", "--aspect-ratio",
-        default=DEFAULT_ASPECT_RATIO,
         choices=VALID_ASPECT_RATIOS,
-        help=f"Aspect ratio (default: {DEFAULT_ASPECT_RATIO})"
+        help=f"Aspect ratio (default: {DEFAULT_ASPECT_RATIO} for generation; match input image for edits)"
     )
     parser.add_argument(
         "-s", "--size",
