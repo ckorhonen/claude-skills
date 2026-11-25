@@ -68,9 +68,9 @@ echo 'export GEMINI_API_KEY="your-api-key"' >> ~/.zshrc
 |-------|----------|-------|
 | `gemini-2.5-flash` | Visual analysis, code generation, fast reasoning | Best cost/quality for analysis |
 | `gemini-2.5-pro` | Complex visual reasoning, code generation | Highest quality analysis |
-| `gemini-2.5-flash-image-preview` | Asset generation, image editing | Native image output |
-| `gemini-3.1-flash-image-preview` | High-quality image generation, 4K output | Latest image generation model |
-| `gemini-3-pro-image-preview` | Professional image generation | Previous-gen high quality |
+| `gemini-2.5-flash-image` | Asset generation, image editing | Native image output |
+| `gemini-nano-banana-2.1` | High-quality image generation, 4K output | Fast iteration |
+| `gemini-3-pro-image` | Professional image generation | Asset generation default |
 
 > **Note:** For image *analysis* tasks (analyze_ui, compare_designs, screenshot_to_code, extract_colors), use the text+vision models (`gemini-2.5-flash` or `gemini-2.5-pro`). For image *generation* tasks (generate_ui_assets), use the image-output models.
 
@@ -549,7 +549,7 @@ Higher resolution provides better accuracy but uses more tokens.
 ## Best Practices
 
 1. **Use appropriate resolution**: Higher resolution = more tokens but better accuracy
-2. **Match model to task**: Use `gemini-3-pro-preview` for analysis, `gemini-3-pro-image-preview` for generation
+2. **Match model to task**: Use `gemini-3.1-pro-preview` for analysis, `gemini-3-pro-image` for generation
 3. **Provide context**: Add relevant details to prompts for better results
 4. **Iterate on assets**: Use multi-turn conversations for refinement
 5. **Combine scripts**: Use extraction + generation for consistent design systems

@@ -23,7 +23,7 @@ EXIT_API_ERROR = 4
 EXIT_SAVE_ERROR = 5
 
 # Configuration
-DEFAULT_MODEL = "gemini-3-pro-preview"
+DEFAULT_MODEL = "gemini-3.1-pro-preview"
 VALID_FRAMEWORKS = ["tailwind", "css", "bootstrap", "vanilla"]
 VALID_RESOLUTIONS = ["low", "medium", "high", "ultra_high"]
 VALID_THINKING = ["low", "high"]

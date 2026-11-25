@@ -22,7 +22,7 @@ EXIT_API_ERROR = 3
 EXIT_SAVE_ERROR = 4
 
 # Configuration
-DEFAULT_MODEL = "gemini-3-pro-preview"
+DEFAULT_MODEL = "gemini-3.1-pro-preview"
 VALID_MODES = ["design", "code", "component", "review", "brainstorm"]
 VALID_FRAMEWORKS = ["tailwind", "css", "bootstrap", "react", "vue", "svelte", "vanilla"]
 VALID_FORMATS = ["text", "json", "markdown"]

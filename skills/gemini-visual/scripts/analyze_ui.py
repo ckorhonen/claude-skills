@@ -21,7 +21,7 @@ EXIT_API_ERROR = 4
 EXIT_SAVE_ERROR = 5
 
 # Configuration
-DEFAULT_MODEL = "gemini-3-pro-preview"
+DEFAULT_MODEL = "gemini-3.1-pro-preview"
 VALID_MODES = ["comprehensive", "accessibility", "layout", "ux"]
 VALID_RESOLUTIONS = ["low", "medium", "high", "ultra_high"]
 VALID_FORMATS = ["text", "json", "markdown"]
