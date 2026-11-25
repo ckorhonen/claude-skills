@@ -508,7 +508,7 @@ jobs:
   performance:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
 
       - name: Run Performance Tests
         run: |
