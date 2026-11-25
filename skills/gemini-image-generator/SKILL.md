@@ -7,9 +7,9 @@ description: Generate images using Google's Gemini API. Use when creating images
 
 ## Overview
 
-Generate images using Google's Gemini API with support for text-to-image generation, image editing, and multi-image reference inputs. Supports the fast Gemini 2.5 Flash Image model and the high-quality Gemini 3.1 Flash Image model with up to 4K resolution.
+Generate images using Google's Gemini API with support for text-to-image generation, image editing, and multi-image reference inputs. Gemini 3 Pro Image and Nano Banana 2.1 support up to 4K resolution.
 
-> **Model naming note (2026):** Google's image generation models follow a "Nano Banana" branding. `gemini-2.5-flash-image-preview` is "Nano Banana", `gemini-3.1-flash-image-preview` is "Nano Banana 2". These are distinct from the conversational Gemini models. See [models reference](https://ai.google.dev/gemini-api/docs/models).
+> **Model naming note:** These "Nano Banana" image models are distinct from the conversational Gemini models. See the [models reference](https://ai.google.dev/gemini-api/docs/models).
 
 ## When to Use
 
@@ -80,9 +80,9 @@ Required:
 
 Optional:
   -o, --output PATH         Output file path (default: auto-generated)
-  -m, --model MODEL         Model to use (default: gemini-3.1-flash-image-preview)
+  -m, --model MODEL         Model to use (default: gemini-3-pro-image)
   -a, --aspect-ratio RATIO  Aspect ratio (default: 1:1)
-  -s, --size SIZE           Image size: 1K, 2K, 4K (default: 1K, Pro only)
+  -s, --size SIZE           Image size: 1K, 2K, 4K (default: 1K; 2K/4K require Nano Banana 2.1 or Pro)
   -i, --input-image PATH    Input image for editing mode
   -r, --reference-images    Reference image(s), can be repeated (max 14)
   -v, --verbose             Show detailed progress
@@ -92,14 +92,14 @@ Optional:
 
 | Model | Resolution | Best For | Nickname |
 |-------|------------|----------|----------|
-| `gemini-3.1-flash-image-preview` | Up to 4K | Latest model, fast + high quality | Nano Banana 2 |
-| `gemini-2.5-flash-image-preview` | Up to 1K | Quick iterations, prototyping, batch generation | Nano Banana |
-| `gemini-3-pro-image-preview` | Up to 4K | Previous-gen high quality fallback | Nano Banana Pro |
+| `gemini-3-pro-image` | Up to 4K | Default; detailed visual work | Nano Banana Pro |
+| `gemini-nano-banana-2.1` | Up to 4K | Fast iteration at high resolution | Nano Banana 2.1 |
+| `gemini-2.5-flash-image` | Up to 1K | Quick sketches and prototypes | Nano Banana |
 
-The `gemini-3.1-flash-image-preview` model is recommended as the default. Use `gemini-2.5-flash-image-preview` for faster/cheaper generation:
+Use `gemini-2.5-flash-image` for quick sketches when 1K is enough:
 
 ```bash
-python scripts/generate_image.py -p "Quick concept sketch" -m gemini-2.5-flash-image-preview
+python scripts/generate_image.py -p "Quick concept sketch" -m gemini-2.5-flash-image
 ```
 
 > **API usage:** All models use the same `google-genai` SDK with `response_modalities=['Image']` in the config. The models require `GEMINI_API_KEY` and use the `generate_content` endpoint (not a separate images endpoint).
@@ -350,7 +350,7 @@ Supported formats for input images: PNG, JPEG, WebP
 
 ### Size option not working
 
-The size option (2K, 4K) is available for `gemini-3.1-flash-image-preview` and `gemini-3-pro-image-preview`. The `gemini-2.5-flash-image-preview` model generates up to 1024px images.
+The size option (2K, 4K) is available for `gemini-nano-banana-2.1` and `gemini-3-pro-image`. The CLI warns and falls back to 1K for `gemini-2.5-flash-image`.
 
 ## Direct API Usage (Python SDK)
 
@@ -366,11 +366,11 @@ from io import BytesIO
 client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
 
 response = client.models.generate_content(
-    model="gemini-3.1-flash-image-preview",
+    model="gemini-3-pro-image",
     contents="A minimalist app icon for a weather app, blue gradient, white cloud",
     config=types.GenerateContentConfig(
         response_modalities=["Image", "Text"],
-        # aspect_ratio and image_size options depend on model support
+        image_config=types.ImageConfig(aspect_ratio="1:1", image_size="2K"),
     )
 )
 
@@ -388,7 +388,7 @@ for part in response.candidates[0].content.parts:
 ## Best Practices
 
 - **Start simple**: Begin with clear, concise prompts and iterate
-- **Use the right model**: `gemini-2.5-flash-image-preview` for speed, `gemini-3.1-flash-image-preview` for quality + 4K
+- **Use the right model**: `gemini-nano-banana-2.1` for quick iteration at up to 4K, `gemini-3-pro-image` for detailed assets
 - **Match aspect ratio to use case**: 16:9 for banners, 1:1 for icons
 - **Save high-quality versions**: Use 4K when you need detailed assets
 - **Iterate on prompts**: Small changes can significantly affect results

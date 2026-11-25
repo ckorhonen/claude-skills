@@ -22,11 +22,9 @@ EXIT_API_ERROR = 4
 EXIT_SAVE_ERROR = 5
 
 # Valid configurations
-VALID_MODELS = [
-    "gemini-2.5-flash-image",
-    "gemini-3-pro-image-preview",
-]
-DEFAULT_MODEL = "gemini-3-pro-image-preview"
+DEFAULT_MODEL = "gemini-3-pro-image"
+HIGH_RES_MODELS = ("gemini-nano-banana-2.1", DEFAULT_MODEL)
+VALID_MODELS = ("gemini-2.5-flash-image", *HIGH_RES_MODELS)
 
 VALID_ASPECT_RATIOS = [
     "1:1", "2:3", "3:2", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9", "21:9"
@@ -109,10 +107,9 @@ def validate_args(args: argparse.Namespace) -> None:
         sys.exit(EXIT_INVALID_ARGS)
 
     # Check size compatibility with model
-    if args.size != "1K" and args.model == "gemini-2.5-flash-image":
-        print(f"Warning: Size '{args.size}' only supported by gemini-3-pro-image-preview", file=sys.stderr)
-        print("Using 1K for gemini-2.5-flash-image", file=sys.stderr)
-        args.size = "1K"
+    if args.size != DEFAULT_SIZE and args.model not in HIGH_RES_MODELS:
+        print(f"Warning: {args.model} does not support {args.size}; using {DEFAULT_SIZE}", file=sys.stderr)
+        args.size = DEFAULT_SIZE
 
     # Check reference images limit
     if args.reference_images and len(args.reference_images) > MAX_REFERENCE_IMAGES:
@@ -182,24 +179,16 @@ def generate_image(
             types.Part.from_bytes(data=img_data, mime_type=mime_type)
         )
 
-    # Build enhanced prompt with aspect ratio and size guidance
-    enhanced_prompt = prompt
-
-    # Add aspect ratio instruction
-    if aspect_ratio != "1:1":
-        enhanced_prompt = f"{prompt} (generate with {aspect_ratio} aspect ratio)"
-
-    # Add size instruction for Pro model
-    if model == "gemini-3-pro-image-preview" and size != "1K":
-        resolution_map = {"2K": "2048", "4K": "4096"}
-        enhanced_prompt = f"{enhanced_prompt} (high resolution: {resolution_map.get(size, '1024')}px)"
-
     # Add text prompt
-    contents.append(enhanced_prompt)
+    contents.append(prompt)
 
     # Configure generation for image output
     config = types.GenerateContentConfig(
         response_modalities=["IMAGE", "TEXT"],
+        image_config=types.ImageConfig(
+            aspect_ratio=aspect_ratio,
+            image_size=size if model in HIGH_RES_MODELS else None,
+        ),
     )
 
     if verbose:
@@ -315,7 +304,7 @@ Environment:
         "-s", "--size",
         default=DEFAULT_SIZE,
         choices=VALID_SIZES,
-        help=f"Image size - Pro model only (default: {DEFAULT_SIZE})"
+        help=f"Image size (default: {DEFAULT_SIZE}); 2K and 4K require Nano Banana 2.1 or Pro"
     )
     parser.add_argument(
         "-i", "--input-image",
