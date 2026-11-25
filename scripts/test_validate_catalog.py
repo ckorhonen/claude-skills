@@ -204,6 +204,12 @@ class ValidateCatalogTests(unittest.TestCase):
             self.assertIsNone(err)
             self.assertEqual(data, {"name": "demo-skill", "description": "A # literal hash"})
 
+            data, err = vc.parse_frontmatter(
+                "---\nname: demo-skill\ndescription: \"Wrapped across\n  two lines\"\n---\n"
+            )
+            self.assertIsNone(err)
+            self.assertEqual(data, {"name": "demo-skill", "description": "Wrapped across two lines"})
+
             for bad in (
                 "---\nname: \"unclosed\ndescription: ok\n---\n",
                 "---\nname: foo: bar\ndescription: ok\n---\n",

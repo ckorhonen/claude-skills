@@ -212,7 +212,11 @@ def parse_frontmatter(text: str) -> tuple[dict[str, Any] | None, str | None]:
     data: dict[str, Any] = {}
     current_key: str | None = None
     in_block_scalar = False
-    for raw_line in lines[1:end_idx]:
+    fm_lines = lines[1:end_idx]
+    idx = 0
+    while idx < len(fm_lines):
+        raw_line = fm_lines[idx]
+        idx += 1
         if not raw_line.strip() or raw_line.lstrip().startswith("#"):
             continue
         if raw_line.startswith("\t"):
@@ -241,7 +245,16 @@ def parse_frontmatter(text: str) -> tuple[dict[str, Any] | None, str | None]:
             current_key = key
             in_block_scalar = True
             continue
-        val, err = _parse_fallback_scalar(raw_val)
+        combined = raw_val_stripped
+        val, err = _parse_fallback_scalar(combined)
+        while err is not None and err.startswith("unclosed quoted scalar") and idx < len(fm_lines):
+            next_line = fm_lines[idx]
+            idx += 1
+            if next_line.startswith("\t"):
+                return None, f"invalid tab indentation in frontmatter: {next_line!r}"
+            next_stripped = next_line.strip()
+            combined = f"{combined} {next_stripped}" if next_stripped else f"{combined}\n"
+            val, err = _parse_fallback_scalar(combined)
         if err is not None:
             return None, err
         data[key] = val
