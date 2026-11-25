@@ -154,6 +154,27 @@ class ValidateCatalogTests(unittest.TestCase):
             self.assertTrue(any("missing.sh" in e for e in errors))
             self.assertTrue(any("package.json: expected a JSON object" in e for e in errors))
 
+    def test_fallback_frontmatter_strips_comments_and_rejects_malformed_yaml(self) -> None:
+        orig_yaml = vc.yaml
+        try:
+            vc.yaml = None
+            data, err = vc.parse_frontmatter(
+                "---\nname: demo-skill # inline comment\ndescription: 'A # literal hash' # trailing\n---\n"
+            )
+            self.assertIsNone(err)
+            self.assertEqual(data, {"name": "demo-skill", "description": "A # literal hash"})
+
+            for bad in (
+                "---\nname: \"unclosed\ndescription: ok\n---\n",
+                "---\nname: foo: bar\ndescription: ok\n---\n",
+                "---\n- not-a-mapping\n---\n",
+            ):
+                data, err = vc.parse_frontmatter(bad)
+                self.assertIsNone(data, f"expected failure for {bad!r}")
+                self.assertIsNotNone(err, f"expected error for {bad!r}")
+        finally:
+            vc.yaml = orig_yaml
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -74,6 +74,48 @@ FENCED_BLOCK_RE = re.compile(r"```[\s\S]*?```")
 README_SKILL_RE = re.compile(r"\./skills/([a-zA-Z0-9_-]+)")
 
 
+def _parse_fallback_scalar(raw_val: str) -> tuple[str | None, str | None]:
+    """Parse a single-line YAML scalar in the stdlib fallback parser."""
+    val = raw_val.strip()
+    if not val or val.startswith("#"):
+        return "", None
+    if val[0] in ("'", '"'):
+        quote = val[0]
+        chars: list[str] = []
+        i = 1
+        closed = False
+        while i < len(val):
+            ch = val[i]
+            if quote == '"' and ch == "\\" and i + 1 < len(val):
+                chars.append(val[i + 1])
+                i += 2
+                continue
+            if quote == "'" and ch == "'" and i + 1 < len(val) and val[i + 1] == "'":
+                chars.append("'")
+                i += 2
+                continue
+            if ch == quote:
+                closed = True
+                i += 1
+                break
+            chars.append(ch)
+            i += 1
+        if not closed:
+            return None, f"unclosed quoted scalar in frontmatter: {raw_val!r}"
+        trailing = val[i:].strip()
+        if trailing and not trailing.startswith("#"):
+            return None, f"unexpected trailing characters after quoted scalar: {raw_val!r}"
+        return "".join(chars), None
+
+    # Strip inline YAML comment (# preceded by whitespace)
+    comment_match = re.search(r"\s+#", val)
+    if comment_match:
+        val = val[: comment_match.start()].rstrip()
+    if ": " in val or val.endswith(":"):
+        return None, f"invalid unquoted mapping syntax in frontmatter value: {raw_val!r}"
+    return val, None
+
+
 def parse_frontmatter(text: str) -> tuple[dict[str, Any] | None, str | None]:
     """Extract and parse YAML frontmatter from a markdown document."""
     if not text.startswith("---\n") and not text.startswith("---\r\n"):
@@ -101,22 +143,44 @@ def parse_frontmatter(text: str) -> tuple[dict[str, Any] | None, str | None]:
     # Minimal stdlib fallback when PyYAML is not installed.
     data: dict[str, Any] = {}
     current_key: str | None = None
+    in_block_scalar = False
     for raw_line in lines[1:end_idx]:
         if not raw_line.strip() or raw_line.lstrip().startswith("#"):
             continue
-        if raw_line[0].isspace() and current_key is not None:
+        if raw_line.startswith("\t"):
+            return None, f"invalid tab indentation in frontmatter: {raw_line!r}"
+        if raw_line[0].isspace():
+            if current_key is None:
+                return None, f"unexpected indentation in frontmatter: {raw_line!r}"
+            stripped = raw_line.strip()
+            if not in_block_scalar and not stripped.startswith("- "):
+                comment_match = re.search(r"\s+#", stripped)
+                if comment_match:
+                    stripped = stripped[: comment_match.start()].rstrip()
             prev = str(data.get(current_key, ""))
-            data[current_key] = (prev + " " + raw_line.strip()).strip()
+            data[current_key] = (prev + " " + stripped).strip()
             continue
-        if ":" not in raw_line:
+        if raw_line.startswith("- ") or ":" not in raw_line:
             return None, f"malformed frontmatter line: {raw_line!r}"
-        key, val = raw_line.split(":", 1)
+        key, raw_val = raw_line.split(":", 1)
         key = key.strip()
-        val = val.strip().strip("\"'")
-        if val in (">", "|", ">-", "|-"):
-            val = ""
+        if not key:
+            return None, f"empty key in frontmatter line: {raw_line!r}"
+        raw_val_stripped = raw_val.strip()
+        block_match = re.match(r"^(?:>[-+]?|\|[-+]?)(?:\s+#.*)?$", raw_val_stripped)
+        if block_match:
+            data[key] = ""
+            current_key = key
+            in_block_scalar = True
+            continue
+        val, err = _parse_fallback_scalar(raw_val)
+        if err is not None:
+            return None, err
         data[key] = val
         current_key = key
+        in_block_scalar = False
+    if not data:
+        return None, "YAML frontmatter must parse to a mapping"
     return data, None
 
 
