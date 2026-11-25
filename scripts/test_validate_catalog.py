@@ -130,6 +130,30 @@ class ValidateCatalogTests(unittest.TestCase):
             errors = vc.validate_manifests(root)
             self.assertTrue(any("hook script not found" in e for e in errors))
 
+    def test_rejects_malformed_manifest_shapes(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = _create_minimal_repo(Path(td))
+            (root / ".claude-plugin" / "plugin.json").write_text("[]\n", encoding="utf-8")
+            (root / ".agents" / "settings.json").write_text(
+                json.dumps(
+                    {
+                        "hooks": {
+                            "PreToolUse": [
+                                "not-an-object",
+                                {"hooks": [{"command": ".claude/hooks/missing.sh"}]},
+                            ]
+                        }
+                    }
+                ),
+                encoding="utf-8",
+            )
+            (root / "skills" / "demo-skill" / "package.json").write_text("[]\n", encoding="utf-8")
+            errors = vc.validate_manifests(root)
+            self.assertTrue(any("plugin.json: expected a JSON object" in e for e in errors))
+            self.assertTrue(any("PreToolUse[0] must be a JSON object" in e for e in errors))
+            self.assertTrue(any("missing.sh" in e for e in errors))
+            self.assertTrue(any("package.json: expected a JSON object" in e for e in errors))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -258,11 +258,15 @@ def validate_manifests(root: Path) -> list[str]:
     else:
         try:
             plugin = json.loads(plugin_json.read_text(encoding="utf-8"))
-            for field in ("name", "version", "description", "repository"):
-                if not isinstance(plugin.get(field), str) or not plugin[field].strip():
-                    errors.append(f".claude-plugin/plugin.json: missing or empty '{field}'")
-        except Exception:
-            pass  # already reported in step 1
+        except json.JSONDecodeError:
+            plugin = None  # already reported in step 1
+        if plugin is not None:
+            if not isinstance(plugin, dict):
+                errors.append(".claude-plugin/plugin.json: expected a JSON object")
+            else:
+                for field in ("name", "version", "description", "repository"):
+                    if not isinstance(plugin.get(field), str) or not plugin[field].strip():
+                        errors.append(f".claude-plugin/plugin.json: missing or empty '{field}'")
 
     # 3. .agents/settings.json hook wiring
     settings_json = root / ".agents" / "settings.json"
@@ -271,25 +275,55 @@ def validate_manifests(root: Path) -> list[str]:
     else:
         try:
             settings = json.loads(settings_json.read_text(encoding="utf-8"))
-            hooks = settings.get("hooks", {})
-            for event_name, groups in hooks.items():
-                for group in groups:
-                    for hook in group.get("hooks", []):
-                        cmd = hook.get("command", "")
-                        if not cmd:
-                            errors.append(f".agents/settings.json: empty hook command in {event_name}")
+        except json.JSONDecodeError:
+            settings = None  # already reported in step 1
+        if settings is not None:
+            if not isinstance(settings, dict):
+                errors.append(".agents/settings.json: expected a JSON object")
+            else:
+                hooks = settings.get("hooks", {})
+                if not isinstance(hooks, dict):
+                    errors.append(".agents/settings.json: 'hooks' must be a JSON object")
+                else:
+                    for event_name, groups in hooks.items():
+                        if not isinstance(groups, list):
+                            errors.append(
+                                f".agents/settings.json: hooks.{event_name} must be a JSON array"
+                            )
                             continue
-                        script_path = root / cmd
-                        if not script_path.is_file():
-                            errors.append(
-                                f".agents/settings.json: hook script not found for {event_name}: {cmd}"
-                            )
-                        elif not os.access(script_path, os.X_OK):
-                            errors.append(
-                                f".agents/settings.json: hook script is not executable: {cmd}"
-                            )
-        except Exception:
-            pass
+                        for idx, group in enumerate(groups):
+                            if not isinstance(group, dict):
+                                errors.append(
+                                    f".agents/settings.json: hooks.{event_name}[{idx}] must be a JSON object"
+                                )
+                                continue
+                            hook_list = group.get("hooks", [])
+                            if not isinstance(hook_list, list):
+                                errors.append(
+                                    f".agents/settings.json: hooks.{event_name}[{idx}].hooks must be a JSON array"
+                                )
+                                continue
+                            for h_idx, hook in enumerate(hook_list):
+                                if not isinstance(hook, dict):
+                                    errors.append(
+                                        f".agents/settings.json: hooks.{event_name}[{idx}].hooks[{h_idx}] must be a JSON object"
+                                    )
+                                    continue
+                                cmd = hook.get("command", "")
+                                if not isinstance(cmd, str) or not cmd.strip():
+                                    errors.append(
+                                        f".agents/settings.json: empty hook command in {event_name}"
+                                    )
+                                    continue
+                                script_path = root / cmd
+                                if not script_path.is_file():
+                                    errors.append(
+                                        f".agents/settings.json: hook script not found for {event_name}: {cmd}"
+                                    )
+                                elif not os.access(script_path, os.X_OK):
+                                    errors.append(
+                                        f".agents/settings.json: hook script is not executable: {cmd}"
+                                    )
 
     # 4. Skill-level package.json manifests
     skills_dir = root / "skills"
@@ -299,11 +333,14 @@ def validate_manifests(root: Path) -> list[str]:
                 continue
             try:
                 data = json.loads(pkg.read_text(encoding="utf-8"))
-                for field in ("name", "version"):
-                    if not isinstance(data.get(field), str) or not data[field].strip():
-                        errors.append(f"{pkg.relative_to(root)}: missing or empty '{field}'")
-            except Exception:
-                pass
+            except json.JSONDecodeError:
+                continue  # already reported in step 1
+            if not isinstance(data, dict):
+                errors.append(f"{pkg.relative_to(root)}: expected a JSON object")
+                continue
+            for field in ("name", "version"):
+                if not isinstance(data.get(field), str) or not data[field].strip():
+                    errors.append(f"{pkg.relative_to(root)}: missing or empty '{field}'")
 
     return errors
 
