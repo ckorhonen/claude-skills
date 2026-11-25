@@ -6,7 +6,7 @@ description: "Use when the user asks to generate or edit images via the OpenAI I
 
 # Image Generation Skill
 
-Generates or edits images for the current project (e.g., website assets, game assets, UI mockups, product mockups, wireframes, logo design, photorealistic images, infographics). Defaults to `gpt-image-1.5` and the OpenAI Image API, and prefers the bundled CLI for deterministic, reproducible runs.
+Generates or edits images for the current project (e.g., website assets, game assets, UI mockups, product mockups, wireframes, logo design, photorealistic images, infographics). Defaults to `gpt-image-2.6-sunburst` and the OpenAI Image API, and prefers the bundled CLI for deterministic, reproducible runs.
 
 ## When to use
 - Generate a new image (concept art, product shot, cover, website hero)
@@ -57,7 +57,7 @@ If the key is missing, give the user these steps:
 If installation isn't possible in this environment, tell the user which dependency is missing and how to install it locally.
 
 ## Defaults & rules
-- Use `gpt-image-1.5` unless the user explicitly asks for `gpt-image-1-mini` or explicitly prefers a cheaper/faster model.
+- Use `gpt-image-2.6-sunburst` by default; use `gpt-image-2.6-flare` for fast iteration.
 - Assume the user wants a new image unless they explicitly ask for an edit.
 - Require `OPENAI_API_KEY` before any live API call.
 - Use the OpenAI Python SDK (`openai` package) for all API calls; do not use raw HTTP.
@@ -153,7 +153,7 @@ Constraints: change only the background; keep the product and its edges unchange
 - For edits, repeat invariants every iteration to reduce drift.
 - Iterate with single-change follow-ups.
 - For latency-sensitive runs, start with quality=low; use quality=high for text-heavy or detail-critical outputs.
-- For strict edits (identity/layout lock), consider input_fidelity=high.
+- For strict edits (identity/layout lock), state what must stay unchanged in the prompt. Omit `--input-fidelity` with Sunburst or Flare; the CLI rejects it for both models.
 - If results feel “tacky”, add a brief “Avoid:” line (stock-photo vibe; cheesy lens flare; oversaturated neon; harsh bloom; oversharpening; clutter) and specify restraint (“editorial”, “premium”, “subtle”).
 
 More principles: `references/prompting.md`. Copy/paste specs: `references/sample-prompts.md`.

@@ -41,7 +41,7 @@ python "$IMAGE_GEN" generate --prompt "A cozy alpine cabin at dawn" --size 1024x
 - **Never modify** `scripts/image_gen.py`. If something is missing, ask the user before doing anything else.
 
 ## Defaults (unless overridden by flags)
-- Model: `gpt-image-1.5`
+- Model: `gpt-image-2.6-sunburst`; use `--model gpt-image-2.6-flare` for fast iteration.
 - Size: `1024x1024`
 - Quality: `auto`
 - Output format: `png`
@@ -49,11 +49,11 @@ python "$IMAGE_GEN" generate --prompt "A cozy alpine cabin at dawn" --size 1024x
 
 ## Quality + input fidelity
 - `--quality` works for `generate`, `edit`, and `generate-batch`: `low|medium|high|auto`.
-- `--input-fidelity` is **edit-only**: `low|high` (use `high` for strict edits like identity or layout lock).
+- `--input-fidelity` is **edit-only** and applies only to models that document support. The CLI exits before making a request if you pass it with Sunburst or Flare; omit the flag for both.
 
 Example:
 ```
-python "$IMAGE_GEN" edit --image input.png --prompt "Change only the background" --quality high --input-fidelity high
+python "$IMAGE_GEN" edit --image input.png --prompt "Change only the background; preserve the subject's identity, pose, and framing" --quality high
 ```
 
 ## Masks (edits)
