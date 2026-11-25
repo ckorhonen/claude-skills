@@ -58,9 +58,13 @@ HELP_SMOKE_SKIP = {
     "skills/ascii-pixel-art/scripts/ascii_pixel_effect.py",
     "skills/ascii-pixel-art/scripts/test_logic.py",
     "skills/autoresearch/scripts/common.py",
+    "skills/gsplat-optimizer/scripts/analyze_splat.py",
     "skills/hyperagent/scripts/common.py",
     "skills/mcp-builder/scripts/connections.py",
     "skills/mcp-builder/scripts/evaluation.py",
+    "skills/poplar-direct-mail/scripts/send_batch.py",
+    "skills/poplar-direct-mail/scripts/send_mailing.py",
+    "skills/poplar-direct-mail/scripts/test_connection.py",
     "skills/seo-optimizer/scripts/generate_sitemap.py",
     "skills/seo-optimizer/scripts/seo_analyzer.py",
 }
