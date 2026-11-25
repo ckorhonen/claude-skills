@@ -59,9 +59,10 @@ jobs:
         run: npm test
 
       - name: Upload coverage
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v7
         with:
           files: ./coverage/lcov.info
+          token: ${{ secrets.CODECOV_TOKEN }}
 ```
 
 ### Pattern 2: Build and Push Docker Image
@@ -256,6 +257,9 @@ on:
 jobs:
   security:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
 
     steps:
       - uses: actions/checkout@v4
@@ -269,7 +273,7 @@ jobs:
           output: "trivy-results.sarif"
 
       - name: Upload Trivy results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: "trivy-results.sarif"
 
@@ -679,7 +683,7 @@ jobs:
 
 ```yaml
 # ❌ WRONG - Cache key doesn't change, stale deps stay cached
-- uses: actions/cache@v3
+- uses: actions/cache@v6
   with:
     path: node_modules
     key: deps-${{ runner.os }} # ← Never changes!
@@ -687,7 +691,7 @@ jobs:
       deps-${{ runner.os }}
 
 # ✅ CORRECT - Include lockfile hash in cache key
-- uses: actions/cache@v3
+- uses: actions/cache@v6
   with:
     path: node_modules
     key: deps-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
@@ -706,7 +710,7 @@ jobs:
   uses: actions/setup-node@v4
   with:
     node-version: "20.x"
-- uses: actions/cache@v3
+- uses: actions/cache@v6
   with:
     path: /tmp/node_modules # ← Wrong path!
     key: deps-${{ hashFiles('package-lock.json') }}
@@ -719,7 +723,7 @@ jobs:
     cache: "npm" # ← Let the action handle caching
 
 # OR if manual caching:
-- uses: actions/cache@v3
+- uses: actions/cache@v6
   with:
     path: ~/.npm # ← Correct npm cache location
     key: npm-${{ hashFiles('package-lock.json') }}
@@ -732,24 +736,28 @@ jobs:
 
 ```yaml
 # ❌ WRONG - Multiple branches writing to same cache
-branches:
-  - main
-  - develop
-  - '*'
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - '*'
 
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/cache@v3
+    - uses: actions/cache@v6
       with:
         path: dist
         key: build-${{ hashFiles('package.json') }}
         # develop branch builds with old deps, overwrites cache
         # main branch then gets develop's stale build artifacts
+```
 
+```yaml
 # ✅ CORRECT - Include branch in cache key or read-only on non-main
-- uses: actions/cache@v3
+- uses: actions/cache@v6
   with:
     path: dist
     key: build-${{ github.ref }}-${{ hashFiles('package.json') }}
