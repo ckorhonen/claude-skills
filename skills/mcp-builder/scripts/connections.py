@@ -1,13 +1,14 @@
 """Lightweight connection handling for MCP servers."""
 
 from abc import ABC, abstractmethod
-from contextlib import AsyncExitStack
+from contextlib import AsyncExitStack, asynccontextmanager
 from typing import Any
 
+import httpx
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.sse import sse_client
 from mcp.client.stdio import stdio_client
-from mcp.client.streamable_http import streamablehttp_client
+from mcp.client.streamable_http import streamable_http_client
 
 
 class MCPConnection(ABC):
@@ -105,8 +106,13 @@ class MCPConnectionHTTP(MCPConnection):
         self.url = url
         self.headers = headers or {}
 
-    def _create_context(self):
-        return streamablehttp_client(url=self.url, headers=self.headers)
+    @asynccontextmanager
+    async def _create_context(self):
+        async with httpx.AsyncClient(
+            headers=self.headers, timeout=httpx.Timeout(30, read=300)
+        ) as client:
+            async with streamable_http_client(self.url, http_client=client) as streams:
+                yield streams
 
 
 def create_connection(
