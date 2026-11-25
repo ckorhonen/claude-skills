@@ -112,6 +112,15 @@ class ValidateCatalogTests(unittest.TestCase):
             self.assertTrue(any("missing catalog entry for skills/demo-skill" in e for e in errors))
             self.assertTrue(any("nonexistent ./skills/demo-skill/MISSING.md" in e for e in errors))
 
+            # Commented-out fence opener must not hide subsequent live catalog entries
+            (root / "README.md").write_text(
+                "# Catalog\n"
+                "<!--\n```md\n-->\n"
+                "- [demo](./skills/demo-skill)\n",
+                encoding="utf-8",
+            )
+            self.assertEqual(vc.validate_readme_sync(root), [])
+
     def test_detects_broken_relative_link_and_ignores_code_block(self) -> None:
         with tempfile.TemporaryDirectory() as td:
             root = _create_minimal_repo(Path(td))

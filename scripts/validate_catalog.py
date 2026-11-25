@@ -71,35 +71,62 @@ HELP_SMOKE_SKIP = {
 
 MARKDOWN_LINK_RE = re.compile(r"\[[^\]]*\]\(([^)]+)\)")
 MARKDOWN_REF_LINK_RE = re.compile(r"^[ ]{0,3}\[[^\]]+\]:[ \t]*(.+)$", re.MULTILINE)
-HTML_COMMENT_RE = re.compile(r"<!--[\s\S]*?-->")
 
 
-def _strip_fenced_code_blocks(text: str) -> str:
-    """Remove backtick- and tilde-fenced code blocks from Markdown."""
+def _strip_fenced_code_blocks(text: str, *, strip_html_comments: bool = False) -> str:
+    """Remove backtick- and tilde-fenced code blocks (and optionally HTML comments) in one pass."""
     out: list[str] = []
     fence_char: str | None = None
     fence_len = 0
+    in_html_comment = False
     for line in text.splitlines(keepends=True):
-        stripped = line.lstrip(" \t")
-        if fence_char is None:
-            if stripped.startswith("```") or stripped.startswith("~~~"):
-                ch = stripped[0]
-                run = 0
-                while run < len(stripped) and stripped[run] == ch:
-                    run += 1
-                if ch == "`" and "`" in stripped[run:]:
-                    out.append(line)
-                else:
-                    fence_char = ch
-                    fence_len = run
-                continue
-            out.append(line)
-        else:
+        if fence_char is not None:
+            stripped = line.lstrip(" \t")
             if stripped.startswith(fence_char * fence_len):
                 rest = stripped.lstrip(fence_char).strip()
                 if not rest:
                     fence_char = None
                     fence_len = 0
+            continue
+
+        working = line
+        if strip_html_comments:
+            cleaned_parts: list[str] = []
+            pos = 0
+            while pos < len(working):
+                if in_html_comment:
+                    end_idx = working.find("-->", pos)
+                    if end_idx == -1:
+                        pos = len(working)
+                    else:
+                        in_html_comment = False
+                        pos = end_idx + 3
+                else:
+                    start_idx = working.find("<!--", pos)
+                    if start_idx == -1:
+                        cleaned_parts.append(working[pos:])
+                        pos = len(working)
+                    else:
+                        cleaned_parts.append(working[pos:start_idx])
+                        in_html_comment = True
+                        pos = start_idx + 4
+            working = "".join(cleaned_parts)
+            if not working:
+                continue
+
+        stripped = working.lstrip(" \t")
+        if stripped.startswith("```") or stripped.startswith("~~~"):
+            ch = stripped[0]
+            run = 0
+            while run < len(stripped) and stripped[run] == ch:
+                run += 1
+            if ch == "`" and "`" in stripped[run:]:
+                out.append(working)
+            else:
+                fence_char = ch
+                fence_len = run
+            continue
+        out.append(working)
     return "".join(out)
 
 
@@ -333,8 +360,8 @@ def validate_readme_sync(root: Path) -> list[str]:
         return ["missing skills/ directory"]
 
     dir_names = {d.name for d in skills_dir.iterdir() if d.is_dir() and not d.name.startswith(".")}
-    readme_text = HTML_COMMENT_RE.sub(
-        "", _strip_fenced_code_blocks(readme_path.read_text(encoding="utf-8"))
+    readme_text = _strip_fenced_code_blocks(
+        readme_path.read_text(encoding="utf-8"), strip_html_comments=True
     )
     raw_targets = [m.group(1) for m in MARKDOWN_LINK_RE.finditer(readme_text)]
     raw_targets.extend(m.group(1) for m in MARKDOWN_REF_LINK_RE.finditer(readme_text))
