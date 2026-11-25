@@ -134,7 +134,9 @@ class ValidateCatalogTests(unittest.TestCase):
                 "[spaced](<my guide.md>)\n"
                 "[ref][missing-ref]\n\n"
                 "[missing-ref]: ./missing-ref.md\n\n"
-                "~~~md\n[ignored](./not-real.md)\n[ignored-ref]: ./also-ignored.md\n~~~\n",
+                "~~~md\n[ignored](./not-real.md)\n[ignored-ref]: ./also-ignored.md\n~~~\n"
+                "1. Nested list example:\n\n"
+                "    ```md\n    [nested-ignored](./nested-not-real.md)\n    ```\n",
                 encoding="utf-8",
             )
             errors = vc.validate_skill_links(root)

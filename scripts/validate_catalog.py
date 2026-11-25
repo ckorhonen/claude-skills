@@ -80,10 +80,9 @@ def _strip_fenced_code_blocks(text: str) -> str:
     fence_char: str | None = None
     fence_len = 0
     for line in text.splitlines(keepends=True):
-        stripped = line.lstrip(" ")
-        indent = len(line) - len(stripped)
+        stripped = line.lstrip(" \t")
         if fence_char is None:
-            if indent <= 3 and (stripped.startswith("```") or stripped.startswith("~~~")):
+            if stripped.startswith("```") or stripped.startswith("~~~"):
                 ch = stripped[0]
                 run = 0
                 while run < len(stripped) and stripped[run] == ch:
@@ -96,7 +95,7 @@ def _strip_fenced_code_blocks(text: str) -> str:
                 continue
             out.append(line)
         else:
-            if indent <= 3 and stripped.startswith(fence_char * fence_len):
+            if stripped.startswith(fence_char * fence_len):
                 rest = stripped.lstrip(fence_char).strip()
                 if not rest:
                     fence_char = None
