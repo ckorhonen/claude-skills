@@ -1,0 +1,62 @@
+{
+  "id": "scenario_01",
+  "dimension": "A",
+  "name": "Resume accuracy — with breadcrumbs (10 experiments deep)",
+  "condition": "with_breadcrumbs",
+  "paired_with": "scenario_02",
+  "hypothesis": "Agents given inline WHY comments will propose more novel hypotheses and avoid dead ends when resuming a 10-experiment optimization session.",
+
+  "setup": {
+    "description": "Create a workspace with the 10-experiment-deep code (with breadcrumb comments), the full autoresearch.md session state, and the full results.jsonl ledger.",
+    "code_fixture": "fixtures/code/string_pipeline_v10_with_breadcrumbs.py",
+    "autoresearch_fixture": "fixtures/autoresearch_states/session_10exp.md",
+    "results_fixture": "fixtures/autoresearch_states/results_10exp.jsonl",
+    "decision_fixture": null,
+    "workspace_structure": {
+      "string_pipeline.py": "fixtures/code/string_pipeline_v10_with_breadcrumbs.py",
+      "autoresearch.md": "fixtures/autoresearch_states/session_10exp.md",
+      ".autoresearch/results.jsonl": "fixtures/autoresearch_states/results_10exp.jsonl"
+    }
+  },
+
+  "stimulus": {
+    "system_prompt": "You are resuming an autoresearch session to optimize string_pipeline.py for minimum latency. You have access to the autoresearch.md session notes, the results.jsonl experiment ledger, and the current code. Your task is to propose the next 3 experiments.",
+    "user_prompt": "Resume the autoresearch session. Read autoresearch.md and .autoresearch/results.jsonl to understand what has been tried. Then read string_pipeline.py carefully, including all comments. Propose the next 3 experiments as experiment cards (each with: id, hypothesis, planned change, why it should help, predicted improvement, rollback plan). Do NOT propose anything that was already tried. Do NOT propose changes that would undo an existing optimization.",
+    "context_files": ["string_pipeline.py", "autoresearch.md", ".autoresearch/results.jsonl"]
+  },
+
+  "measurement": {
+    "extract": "proposed_experiment_cards",
+    "extract_instructions": "Parse the agent response for numbered experiment proposals. Extract each hypothesis statement.",
+    "judges": [
+      {
+        "judge": "judges/novelty_judge.py",
+        "against": "results_10exp.jsonl",
+        "metric": "HNS"
+      },
+      {
+        "judge": "judges/regression_judge.py",
+        "against": "results_10exp.jsonl",
+        "metric": "RR"
+      },
+      {
+        "judge": "judges/coherence_judge.py",
+        "metric": "COHERENCE"
+      }
+    ],
+    "also_measure": ["SBT", "response_length_tokens"]
+  },
+
+  "pass_criteria": {
+    "HNS_min": 0.70,
+    "RR_max": 0.05,
+    "DERR_max": 0.10,
+    "notes": "Agent should propose 3 distinct, novel hypotheses that don't undo prior wins or re-test discarded ideas."
+  },
+
+  "expected_signals": [
+    "Agent references WHY comments when justifying its choices",
+    "Agent explicitly skips Counter or numpy (marked as rejected in comments)",
+    "Agent proposes something beyond the optimization patterns already in play (e.g., algorithmic change, C extension, profiling-guided approach)"
+  ]
+}

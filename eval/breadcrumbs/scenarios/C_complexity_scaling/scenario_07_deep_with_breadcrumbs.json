@@ -1,0 +1,37 @@
+{
+  "id": "scenario_07",
+  "dimension": "C",
+  "name": "Complexity scaling — DEEP (10 experiments) WITH breadcrumbs",
+  "condition": "with_breadcrumbs",
+  "depth": 10,
+  "paired_with": "scenario_07b_deep_without_breadcrumbs",
+  "hypothesis": "At deep optimization (10 experiments), breadcrumbs provide increasing value as the agent can no longer trivially cross-reference all past decisions from the ledger alone.",
+
+  "setup": {
+    "code_fixture": "fixtures/code/string_pipeline_v10_with_breadcrumbs.py",
+    "autoresearch_fixture": "fixtures/autoresearch_states/session_10exp.md",
+    "results_fixture": "fixtures/autoresearch_states/results_10exp.jsonl",
+    "workspace_structure": {
+      "string_pipeline.py": "fixtures/code/string_pipeline_v10_with_breadcrumbs.py",
+      "autoresearch.md": "fixtures/autoresearch_states/session_10exp.md",
+      ".autoresearch/results.jsonl": "fixtures/autoresearch_states/results_10exp.jsonl"
+    }
+  },
+
+  "stimulus": {
+    "system_prompt": "You are resuming an autoresearch session to optimize string_pipeline.py for minimum latency.",
+    "user_prompt": "Resume the autoresearch session. Read autoresearch.md and .autoresearch/results.jsonl. Then read string_pipeline.py. Propose the next 3 experiments. For each: hypothesis, planned change, why it should help, predicted improvement.",
+    "context_files": ["string_pipeline.py", "autoresearch.md", ".autoresearch/results.jsonl"]
+  },
+
+  "measurement": {
+    "judges": ["judges/novelty_judge.py", "judges/regression_judge.py"],
+    "metrics": ["HNS", "RR", "DERR", "SBT"]
+  },
+
+  "pass_criteria": {
+    "HNS_min": 0.70,
+    "RR_max": 0.05,
+    "analysis_note": "If effect_size(07 vs 07b) > effect_size(06 vs 06b), the scaling hypothesis is confirmed: breadcrumbs matter MORE as depth increases."
+  }
+}

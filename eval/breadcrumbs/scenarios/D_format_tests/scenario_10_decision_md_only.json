@@ -1,0 +1,39 @@
+{
+  "id": "scenario_10",
+  "dimension": "D",
+  "name": "Format test — DECISION.md ONLY (no inline comments)",
+  "condition": "decision_md_only",
+  "hypothesis": "A centralized DECISION.md with ADRs (Architecture Decision Records) provides equivalent or better breadcrumbs than inline comments, with the advantage of being easier to scan without reading the code.",
+
+  "setup": {
+    "description": "v10 code WITHOUT inline comments. DECISION.md file present with all ADRs. Standard autoresearch.md and results.jsonl.",
+    "code_fixture": "fixtures/code/string_pipeline_v10_no_breadcrumbs.py",
+    "autoresearch_fixture": "fixtures/autoresearch_states/session_10exp.md",
+    "results_fixture": "fixtures/autoresearch_states/results_10exp.jsonl",
+    "decision_fixture": "fixtures/decisions/DECISION_v10.md",
+    "workspace_structure": {
+      "string_pipeline.py": "fixtures/code/string_pipeline_v10_no_breadcrumbs.py",
+      "autoresearch.md": "fixtures/autoresearch_states/session_10exp.md",
+      ".autoresearch/results.jsonl": "fixtures/autoresearch_states/results_10exp.jsonl",
+      "DECISION.md": "fixtures/decisions/DECISION_v10.md"
+    }
+  },
+
+  "stimulus": {
+    "system_prompt": "You are resuming an autoresearch session to optimize string_pipeline.py for minimum latency.",
+    "user_prompt": "Resume the autoresearch session. Note that a DECISION.md file is available with architecture decision records. Propose the next 3 experiments with full experiment cards.",
+    "context_files": ["string_pipeline.py", "autoresearch.md", ".autoresearch/results.jsonl", "DECISION.md"]
+  },
+
+  "measurement": {
+    "judges": ["judges/novelty_judge.py", "judges/regression_judge.py"],
+    "metrics": ["HNS", "RR", "DERR", "SBT", "TOR"],
+    "special": "Track whether agent reads DECISION.md before proposing — measured by whether agent references ADR numbers or DECISION.md in its response."
+  },
+
+  "pass_criteria": {
+    "HNS_min": 0.70,
+    "RR_max": 0.05,
+    "notes": "Compare to scenario_09. If DECISION.md only performs comparably to inline comments, the format choice is flexible. If it underperforms, inline comments provide better anchoring."
+  }
+}

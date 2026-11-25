@@ -1,0 +1,39 @@
+{
+  "id": "scenario_06",
+  "dimension": "C",
+  "name": "Complexity scaling — SHALLOW (2 experiments) WITH breadcrumbs",
+  "condition": "with_breadcrumbs",
+  "depth": 2,
+  "paired_with": "scenario_06b_shallow_without_breadcrumbs",
+  "hypothesis": "At shallow optimization depth (2 experiments), breadcrumbs may have minimal effect because the session history is short enough to hold in context without anchoring.",
+
+  "setup": {
+    "description": "2-experiment-deep session with breadcrumb comments. Only 2 past experiments to track — the ledger is short and easy to comprehend.",
+    "code_fixture": "fixtures/code/string_pipeline_v2_with_breadcrumbs.py",
+    "autoresearch_fixture": "fixtures/autoresearch_states/session_2exp.md",
+    "results_fixture": "fixtures/autoresearch_states/results_2exp.jsonl",
+    "decision_fixture": null,
+    "workspace_structure": {
+      "string_pipeline.py": "fixtures/code/string_pipeline_v2_with_breadcrumbs.py",
+      "autoresearch.md": "fixtures/autoresearch_states/session_2exp.md",
+      ".autoresearch/results.jsonl": "fixtures/autoresearch_states/results_2exp.jsonl"
+    }
+  },
+
+  "stimulus": {
+    "system_prompt": "You are resuming an autoresearch session to optimize string_pipeline.py for minimum latency.",
+    "user_prompt": "Resume the autoresearch session. Read autoresearch.md and .autoresearch/results.jsonl. Then read string_pipeline.py. Propose the next 3 experiments. For each: hypothesis, planned change, why it should help, predicted improvement.",
+    "context_files": ["string_pipeline.py", "autoresearch.md", ".autoresearch/results.jsonl"]
+  },
+
+  "measurement": {
+    "judges": ["judges/novelty_judge.py", "judges/regression_judge.py"],
+    "metrics": ["HNS", "RR", "DERR", "SBT"]
+  },
+
+  "pass_criteria": {
+    "HNS_min": 0.70,
+    "RR_max": 0.05,
+    "notes": "At 2-experiment depth, both conditions should perform similarly. Small effect size expected. This is the low-complexity baseline for the scaling comparison."
+  }
+}

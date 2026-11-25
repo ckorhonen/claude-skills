@@ -1,0 +1,37 @@
+{
+  "id": "scenario_12",
+  "dimension": "D",
+  "name": "Format test — autoresearch.md 'What We've Learned' ONLY (control condition)",
+  "condition": "autoresearch_md_only",
+  "hypothesis": "The existing autoresearch.md 'What We've Learned' section provides some value as breadcrumbs, but may be insufficient when the agent is looking at code and can't easily cross-reference narrative notes to specific code patterns.",
+
+  "setup": {
+    "description": "v10 code WITHOUT inline comments. NO DECISION.md. Standard autoresearch.md and results.jsonl. This is the CONTROL condition — it represents the current autoresearch skill behavior with no additional breadcrumbs.",
+    "code_fixture": "fixtures/code/string_pipeline_v10_no_breadcrumbs.py",
+    "autoresearch_fixture": "fixtures/autoresearch_states/session_10exp.md",
+    "results_fixture": "fixtures/autoresearch_states/results_10exp.jsonl",
+    "decision_fixture": null,
+    "workspace_structure": {
+      "string_pipeline.py": "fixtures/code/string_pipeline_v10_no_breadcrumbs.py",
+      "autoresearch.md": "fixtures/autoresearch_states/session_10exp.md",
+      ".autoresearch/results.jsonl": "fixtures/autoresearch_states/results_10exp.jsonl"
+    }
+  },
+
+  "stimulus": {
+    "system_prompt": "You are resuming an autoresearch session to optimize string_pipeline.py for minimum latency.",
+    "user_prompt": "Resume the autoresearch session. Read autoresearch.md and .autoresearch/results.jsonl. Propose the next 3 experiments with full experiment cards.",
+    "context_files": ["string_pipeline.py", "autoresearch.md", ".autoresearch/results.jsonl"]
+  },
+
+  "measurement": {
+    "judges": ["judges/novelty_judge.py", "judges/regression_judge.py"],
+    "metrics": ["HNS", "RR", "DERR", "SBT", "TOR"]
+  },
+
+  "pass_criteria": {
+    "HNS_min": 0.60,
+    "RR_max": 0.10,
+    "notes": "This is the BASELINE for the format comparison. Results from scenarios 09, 10, 11 are compared against this baseline. If none beat it substantially, breadcrumbs add limited value beyond the existing ledger."
+  }
+}
