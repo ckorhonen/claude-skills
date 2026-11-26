@@ -30,8 +30,8 @@
 
 import { config } from 'dotenv';
 
-// Load environment variables
-config();
+// Load environment variables without dotenv v18's startup logging
+config({ quiet: true });
 
 const CLOUDFLARE_API_BASE = 'https://api.cloudflare.com/client/v4';
 
