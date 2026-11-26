@@ -12,7 +12,7 @@
     "dns": "bun scripts/dns-routes.ts"
   },
   "dependencies": {
-    "@cloudflare/workers-types": "^4.20231218.0",
+    "@cloudflare/workers-types": "^5.20261125.1",
     "dotenv": "^16.3.1"
   },
   "devDependencies": {
