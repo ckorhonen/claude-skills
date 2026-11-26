@@ -6,7 +6,7 @@ A collection of skills for [Claude Code](https://docs.anthropic.com/en/docs/clau
 
 Two tightly-scoped packs also live at [cdd.dev/skills](https://cdd.dev/skills). Same install convention (`npx skills add ckorhonen/<repo>`):
 
-- **[swe-skills](https://github.com/ckorhonen/swe-skills)** — 15 `swe:` skills for engineering judgment work: PR risk review, repo introspection, performance and security audits, incident follow-up, ownership maps. Invoked in conversation.
+- **[swe-skills](https://github.com/ckorhonen/swe-skills)** — 17 `swe:` skills for engineering judgment work: PR risk review, repo introspection, performance and security audits, incident follow-up, ownership maps. Invoked in conversation.
 - **[hone-skills](https://github.com/ckorhonen/hone-skills)** — 8 `hone:` skills that run on a cadence (daily, weekly, per-PR) to fight code entropy: method brevity, naming clarity, duplication, broken-windows detection.
 
 This repo is the broad collection — wider in scope, more varied in purpose.
