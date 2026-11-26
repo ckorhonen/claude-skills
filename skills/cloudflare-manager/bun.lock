@@ -1,10 +1,11 @@
 {
   "lockfileVersion": 1,
+  "configVersion": 0,
   "workspaces": {
     "": {
       "name": "cloudflare-manager-skill",
       "dependencies": {
-        "@cloudflare/workers-types": "^4.20231218.0",
+        "@cloudflare/workers-types": "5.20261125.1",
         "dotenv": "^16.3.1",
       },
       "devDependencies": {
@@ -13,7 +14,7 @@
     },
   },
   "packages": {
-    "@cloudflare/workers-types": ["@cloudflare/workers-types@4.20260307.1", "", {}, "sha512-0PvWLVVD6Q64V/XhollYtc8H35Vxm2rZi8bkZbEr3lK+mNgd2FBBVhlZ6A3saAUq3giRF4US/UfU/3a8i1PEcg=="],
+    "@cloudflare/workers-types": ["@cloudflare/workers-types@5.20261125.1", "", {}, "sha512-FBFIY/srJZZtZjxyH56AerZ0ZDbhr6Ifa5O707q0f7YzHmzqd+2zD3vG6d8cAcSDL/heJvsP7eEAsYRLFd7jpw=="],
 
     "@types/node": ["@types/node@25.3.5", "", { "dependencies": { "undici-types": "~7.18.0" } }, "sha512-oX8xrhvpiyRCQkG1MFchB09f+cXftgIXb3a7UUa4Y3wpmZPw5tyZGTLWhlESOLq1Rq6oDlc8npVU2/9xiCuXMA=="],
 
