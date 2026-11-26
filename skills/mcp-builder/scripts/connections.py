@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from contextlib import AsyncExitStack, asynccontextmanager
 from typing import Any
 
-import httpx
+import httpx2
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.sse import sse_client
 from mcp.client.stdio import stdio_client
@@ -60,7 +60,7 @@ class MCPConnection(ABC):
             {
                 "name": tool.name,
                 "description": tool.description,
-                "input_schema": tool.inputSchema,
+                "input_schema": tool.input_schema,
             }
             for tool in response.tools
         ]
@@ -108,8 +108,8 @@ class MCPConnectionHTTP(MCPConnection):
 
     @asynccontextmanager
     async def _create_context(self):
-        async with httpx.AsyncClient(
-            headers=self.headers, timeout=httpx.Timeout(30, read=300)
+        async with httpx2.AsyncClient(
+            headers=self.headers, timeout=httpx2.Timeout(30, read=300)
         ) as client:
             async with streamable_http_client(self.url, http_client=client) as streams:
                 yield streams
